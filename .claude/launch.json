@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ClinicExpress Streamlit App",
+      "runtimeExecutable": "/Users/autumposnchatwong/Library/Python/3.9/bin/streamlit",
+      "runtimeArgs": ["run", "/Users/autumposnchatwong/Clinicexpress/app.py", "--server.port=8501", "--server.headless=true"],
+      "port": 8501
+    }
+  ]
+}
