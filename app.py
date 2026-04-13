@@ -249,8 +249,15 @@ CHART_BG = dict(
     font_color="#374151",
     xaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B"),
     yaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B"),
-    margin=dict(t=16, b=16, l=8, r=8),
 )
+
+def ch(**overrides):
+    """Merge CHART_BG with overrides (margin safe)."""
+    d = {**CHART_BG}
+    d.update(overrides)
+    if "margin" not in d:
+        d["margin"] = dict(t=16, b=16, l=8, r=8)
+    return d
 LEGEND_STYLE = dict(
     bgcolor="rgba(255,255,255,0.8)",
     font_size=11,
@@ -435,16 +442,15 @@ def kpi(col, icon, label, value, delta=None, delta_up=None, note=None, accent=No
         arr = "▲" if delta_up else "▼"
         delta_html = f'<p style="margin:4px 0 0;color:{clr};font-size:.78rem;font-weight:600">{arr} {delta}</p>'
     note_html = f'<p style="margin:4px 0 0;color:#94A3B8;font-size:.72rem">{note}</p>' if note else ""
-    bg = accent if accent else "#FFFFFF"
-    txt = "#FFFFFF" if accent else "#0F172A"
-    lbl_clr = "rgba(255,255,255,0.8)" if accent else "#64748B"
+    border_color = accent if accent else "#E2E8F0"
+    icon_clr = accent if accent else "#7C3AED"
     col.markdown(f"""
-    <div style="background:{bg};border:1px solid {'transparent' if accent else '#E2E8F0'};
-                border-radius:16px;padding:18px 22px 14px;height:100%;min-height:105px;
-                box-shadow:{'0 4px 12px rgba(124,58,237,0.25)' if accent else '0 1px 4px rgba(0,0,0,0.06)'}">
-      <p style="margin:0;color:{lbl_clr};font-size:.72rem;font-weight:600;
-                letter-spacing:.07em;text-transform:uppercase">{icon}&nbsp; {label}</p>
-      <p style="margin:8px 0 0;color:{txt};font-size:1.75rem;font-weight:700;line-height:1.1">{value}</p>
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-top:3px solid {border_color};
+                border-radius:12px;padding:16px 20px 12px;height:100%;min-height:100px;
+                box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+      <p style="margin:0;color:#94A3B8;font-size:.70rem;font-weight:600;
+                letter-spacing:.07em;text-transform:uppercase">{label}</p>
+      <p style="margin:6px 0 0;color:#0F172A;font-size:1.65rem;font-weight:700;line-height:1.1">{value}</p>
       {delta_html}{note_html}
     </div>""", unsafe_allow_html=True)
 
@@ -591,8 +597,7 @@ if page == "📊  ภาพรวมธุรกิจ":
                 textinfo="percent",
                 hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>%{percent}<extra></extra>",
             ))
-            fig_pie.update_layout(
-                **CHART_BG,
+            fig_pie.update_layout(**ch(
                 height=320,
                 showlegend=True,
                 legend=dict(
@@ -604,7 +609,7 @@ if page == "📊  ภาพรวมธุรกิจ":
                     **{k: v for k, v in LEGEND_STYLE.items()},
                 ),
                 margin=dict(t=10, b=80, l=10, r=10),
-            )
+            ))
             ev_pie = st.plotly_chart(fig_pie, key="pie_income", on_select="rerun",
                                      use_container_width=True)
             pts_pie = ev_pie.selection.points if ev_pie.selection else []
@@ -683,8 +688,7 @@ if page == "📊  ภาพรวมธุรกิจ":
                 textinfo="percent",
                 hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>%{percent}<extra></extra>",
             ))
-            fig_donut.update_layout(
-                **CHART_BG,
+            fig_donut.update_layout(**ch(
                 height=320,
                 showlegend=True,
                 legend=dict(
@@ -703,7 +707,7 @@ if page == "📊  ภาพรวมธุรกิจ":
                     font_color="#374151",
                     showarrow=False,
                 )],
-            )
+            ))
             ev_donut = st.plotly_chart(fig_donut, key="donut_service", on_select="rerun",
                                        use_container_width=True)
             pts_donut = ev_donut.selection.points if ev_donut.selection else []
@@ -776,12 +780,11 @@ if page == "📊  ภาพรวมธุรกิจ":
                     marker_color=clr, marker_line_width=0,
                     hovertemplate=f"<b>%{{x}}</b><br>{tt}: ฿%{{y:,.0f}}<extra></extra>",
                 ))
-            fig_bar.update_layout(
-                **CHART_BG,
+            fig_bar.update_layout(**ch(
                 barmode="group", height=300,
                 bargap=0.25, bargroupgap=0.08,
                 legend=LEGEND_STYLE,
-            )
+            ))
             ev1 = st.plotly_chart(fig_bar, key="bar_daily", on_select="rerun",
                                   use_container_width=True)
             pts1 = ev1.selection.points if ev1.selection else []
@@ -821,7 +824,7 @@ if page == "📊  ภาพรวมธุรกิจ":
             marker_line_width=0,
             hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<extra></extra>",
         ))
-        fig_hbar.update_layout(**CHART_BG, height=280)
+        fig_hbar.update_layout(**ch(height=280))
         ev3 = st.plotly_chart(fig_hbar, key="bar_expense", on_select="rerun",
                               use_container_width=True)
         pts3 = ev3.selection.points if ev3.selection else []
@@ -978,7 +981,7 @@ elif page == "💰  รายรับ-รายจ่าย":
                 marker_color="#10B981", marker_line_width=0,
                 hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
             ))
-            fig_din.update_layout(**CHART_BG, height=220, showlegend=False)
+            fig_din.update_layout(**ch(height=220, showlegend=False))
             st.plotly_chart(fig_din, use_container_width=True)
 
         render_table(df_in, "รายรับ", INCOME_CATS)
@@ -1000,7 +1003,7 @@ elif page == "💰  รายรับ-รายจ่าย":
                 marker_color="#EF4444", marker_line_width=0,
                 hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
             ))
-            fig_dout.update_layout(**CHART_BG, height=220, showlegend=False)
+            fig_dout.update_layout(**ch(height=220, showlegend=False))
             st.plotly_chart(fig_dout, use_container_width=True)
 
         render_table(df_out, "รายจ่าย", EXPENSE_CATS)
@@ -1273,8 +1276,7 @@ elif page == "👥  ลูกค้า & สัตว์":
             text=top10_cx["net_amount"].map(lambda v: f"฿{v:,.0f}"),
             textposition="outside",
         ))
-        fig_cx.update_layout(**CHART_BG, height=380, showlegend=False,
-                             coloraxis_showscale=False)
+        fig_cx.update_layout(**ch(height=380, showlegend=False, coloraxis_showscale=False))
         st.plotly_chart(fig_cx, use_container_width=True)
     else:
         st.info("ยังไม่มีข้อมูลรายรับ")
@@ -1344,7 +1346,7 @@ elif page == "💊  คลังยา & สินค้า":
                              colorscale=[[0,"#DBEAFE"],[1,"#1D4ED8"]], line_width=0),
                 hovertemplate="<b>%{y}</b><br>มูลค่า: ฿%{x:,.0f}<extra></extra>",
             ))
-            fig_stk.update_layout(**CHART_BG, height=360, coloraxis_showscale=False)
+            fig_stk.update_layout(**ch(height=360, coloraxis_showscale=False))
             ev_stk = st.plotly_chart(fig_stk, key="bar_stock", on_select="rerun",
                                      use_container_width=True)
             pts_stk = ev_stk.selection.points if ev_stk.selection else []
@@ -1394,7 +1396,7 @@ elif page == "💊  คลังยา & สินค้า":
                              colorscale=[[0,"#DBEAFE"],[1,"#1D4ED8"]], line_width=0),
                 hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
             ))
-            fig_sup.update_layout(**CHART_BG, height=260, coloraxis_showscale=False)
+            fig_sup.update_layout(**ch(height=260, coloraxis_showscale=False))
             st.plotly_chart(fig_sup, use_container_width=True)
 
     with tab3:
@@ -1494,9 +1496,9 @@ elif page == "📄  รายงานการเงิน":
                     hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
                     text=summary_df["amount"].map(lambda v: fmt_thb(v)),
                     textposition="outside",
-                    textfont=dict(size=11, color="#A8D5BF"),
+                    textfont=dict(size=11, color="#374151"),
                 ))
-                fig_sum.update_layout(**CHART_BG, height=340)
+                fig_sum.update_layout(**ch(height=340))
                 ev_sum = st.plotly_chart(fig_sum, key="bar_pdf_cat", on_select="rerun",
                                          use_container_width=True)
                 pts_sum = ev_sum.selection.points if ev_sum.selection else []
@@ -1516,13 +1518,15 @@ elif page == "📄  รายงานการเงิน":
                     textinfo="percent",
                     hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>%{percent}<extra></extra>",
                 ))
-                fig_p.update_layout(
-                    **CHART_BG,
-                    margin=dict(t=10, b=10, l=10, r=10),
-                    height=340,
+                fig_p.update_layout(**ch(
+                    margin=dict(t=10, b=80, l=10, r=10),
+                    height=360,
                     showlegend=True,
-                    legend=LEGEND_STYLE,
-                )
+                    legend=dict(
+                        orientation="h", yanchor="top", y=-0.15,
+                        xanchor="center", x=0.5, **LEGEND_STYLE
+                    ),
+                ))
                 ev_p2 = st.plotly_chart(fig_p, key="pie_pdf", on_select="rerun",
                                         use_container_width=True)
                 pts_p2 = ev_p2.selection.points if ev_p2.selection else []
@@ -1548,7 +1552,7 @@ elif page == "📄  รายงานการเงิน":
                 hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
                 width=[0.4, 0.4],
             ))
-            fig_pay.update_layout(**CHART_BG, height=260)
+            fig_pay.update_layout(**ch(height=260))
             st.plotly_chart(fig_pay, use_container_width=True)
 
             if not items_df.empty:
@@ -1582,9 +1586,8 @@ elif page == "📄  รายงานการเงิน":
                         ),
                         hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<extra></extra>",
                     ))
-                    fig_ti.update_layout(**CHART_BG,
-                                         height=max(300, len(top_items)*28),
-                                         coloraxis_showscale=False)
+                    fig_ti.update_layout(**ch(height=max(300, len(top_items)*28),
+                                             coloraxis_showscale=False))
                     st.plotly_chart(fig_ti, use_container_width=True)
 
                     disp_items = items_filtered[["category","item_name","qty","unit","total"]].copy()

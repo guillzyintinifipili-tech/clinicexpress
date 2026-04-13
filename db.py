@@ -103,12 +103,6 @@ def init_db():
 
     con.commit()
 
-    # Seed transactions if empty
-    count = cur.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
-    if count == 0:
-        _seed_dummy_data(cur)
-        con.commit()
-
     # Seed appointments if empty
     appt_count = cur.execute("SELECT COUNT(*) FROM appointments").fetchone()[0]
     if appt_count == 0:
