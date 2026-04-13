@@ -11,6 +11,7 @@ from db import (
     init_db, fetch_all, insert_transaction, bulk_insert_from_df,
     fetch_stock_items, import_stock_items,
     fetch_stock_incoming, import_stock_incoming,
+    insert_appointment, fetch_appointments, delete_appointment,
     UPLOADS_DIR,
 )
 
@@ -52,9 +53,9 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     color: #475569 !important;
 }
 [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-    background: #EFF6FF !important;
-    border-color: #3B82F6 !important;
-    color: #1D4ED8 !important;
+    background: #EDE9FE !important;
+    border-color: #7C3AED !important;
+    color: #5B21B6 !important;
 }
 
 /* Metric cards */
@@ -69,7 +70,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 [data-testid="stMetricValue"] { color: #0F172A !important; font-size: 1.8rem !important; font-weight: 700 !important; }
 
 /* Headings */
-h1 { color: #0369A1 !important; font-size: 1.6rem !important; font-weight: 700 !important; letter-spacing: -.03em; }
+h1 { color: #7C3AED !important; font-size: 1.6rem !important; font-weight: 700 !important; letter-spacing: -.03em; }
 h2 { color: #0F766E !important; font-size: 1.1rem !important; font-weight: 600 !important; }
 h3 { color: #1D4ED8 !important; font-size: 0.95rem !important; font-weight: 600 !important; }
 
@@ -86,9 +87,9 @@ h3 { color: #1D4ED8 !important; font-size: 0.95rem !important; font-weight: 600 
 }
 [data-baseweb="tab"][aria-selected="true"] {
     background: #FFFFFF !important;
-    color: #0369A1 !important;
+    color: #7C3AED !important;
     border-color: #E2E8F0 !important;
-    border-bottom: 2px solid #0369A1 !important;
+    border-bottom: 2px solid #7C3AED !important;
 }
 
 /* Expander */
@@ -102,14 +103,14 @@ h3 { color: #1D4ED8 !important; font-size: 0.95rem !important; font-weight: 600 
 
 /* Buttons */
 .stButton > button {
-    background: #F0F9FF !important; color: #0369A1 !important;
-    border: 1px solid #BAE6FD !important; border-radius: 8px !important;
+    background: #F5F3FF !important; color: #7C3AED !important;
+    border: 1px solid #DDD6FE !important; border-radius: 8px !important;
     font-size: 0.85rem !important; font-weight: 500 !important;
     transition: all 0.15s;
 }
 .stButton > button:hover {
-    background: #0369A1 !important; color: #FFFFFF !important;
-    border-color: #0369A1 !important;
+    background: #7C3AED !important; color: #FFFFFF !important;
+    border-color: #7C3AED !important;
 }
 
 /* Download button */
@@ -141,9 +142,9 @@ hr { border-color: #E2E8F0 !important; margin: 1.2rem 0 !important; }
 /* Drilldown active badge */
 .drill-badge {
     display: inline-flex; align-items: center; gap: 8px;
-    background: #EFF6FF; border: 1px solid #3B82F6;
+    background: #EDE9FE; border: 1px solid #7C3AED;
     border-radius: 20px; padding: 4px 14px;
-    color: #1D4ED8; font-size: 0.82rem; font-weight: 600;
+    color: #5B21B6; font-size: 0.82rem; font-weight: 600;
     margin-bottom: 12px;
 }
 
@@ -156,24 +157,46 @@ hr { border-color: #E2E8F0 !important; margin: 1.2rem 0 !important; }
     margin-bottom: 16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
+
+/* Status badges */
+.badge-available { background:#D1FAE5; color:#065F46; padding:2px 10px; border-radius:12px; font-size:.78rem; font-weight:600; }
+.badge-booked    { background:#DBEAFE; color:#1E40AF; padding:2px 10px; border-radius:12px; font-size:.78rem; font-weight:600; }
+.badge-consult   { background:#FEF3C7; color:#92400E; padding:2px 10px; border-radius:12px; font-size:.78rem; font-weight:600; }
+.badge-cancelled { background:#FEE2E2; color:#991B1B; padding:2px 10px; border-radius:12px; font-size:.78rem; font-weight:600; }
+
+/* KPI card purple accent */
+.kpi-purple {
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+    border-radius: 16px; padding: 18px 22px 14px;
+    box-shadow: 0 4px 12px rgba(124,58,237,0.25);
+}
+
+/* Table row colored dot */
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
 </style>
 """, unsafe_allow_html=True)
 
 init_db()
 
-# ─── Color palette (consistent across ALL charts) ──────────────────────────────
+# ─── Color palette ─────────────────────────────────────────────────────────────
 CAT_COLORS = {
     # Income services
-    "ตรวจโรคทั่วไป":              "#38BDF8",
-    "ผ่าตัด":                     "#F472B6",
-    "ฉีดวัคซีน":                  "#4ADE80",
-    "อาบน้ำ-ตัดขน":               "#FBBF24",
-    "รับฝากสัตว์":                "#A78BFA",
-    "เอกซเรย์ / Lab":             "#22D3EE",
-    "ทันตกรรม":                   "#FB923C",
-    "จำหน่ายยา-อาหาร":            "#E879F9",
+    "ยาและเวชภัณฑ์":               "#EC4899",
+    "บริการตรวจรักษา":             "#F97316",
+    "เอกซเรย์ / Lab":              "#3B82F6",
+    "ผ่าตัดและหัตถการ":            "#8B5CF6",
+    "วัคซีน":                      "#10B981",
+    "อาบน้ำ-ตัดขน":               "#F59E0B",
+    "รับฝากสัตว์":                 "#06B6D4",
+    "อาหาร-อุปกรณ์":               "#84CC16",
+    # Also map old category names
+    "ตรวจโรคทั่วไป":               "#F97316",
+    "ผ่าตัด":                      "#8B5CF6",
+    "ฉีดวัคซีน":                   "#10B981",
+    "ทันตกรรม":                    "#FB923C",
+    "จำหน่ายยา-อาหาร":             "#84CC16",
     # Expense categories
-    "ยาและเวชภัณฑ์":               "#60A5FA",
+    "ยาและเวชภัณฑ์_exp":           "#60A5FA",
     "ค่าเช่าสถานที่":              "#F87171",
     "เงินเดือนพนักงาน":            "#34D399",
     "ค่าสาธารณูปโภค":             "#FDE68A",
@@ -192,6 +215,17 @@ CAT_COLORS = {
     "สินค้า Pet Shop":             "#E879F9",
 }
 
+# Expense category colors (not sharing with income for clarity)
+EXPENSE_CAT_COLORS = {
+    "ยาและเวชภัณฑ์":               "#60A5FA",
+    "ค่าเช่าสถานที่":              "#F87171",
+    "เงินเดือนพนักงาน":            "#34D399",
+    "ค่าสาธารณูปโภค":             "#FDE68A",
+    "อุปกรณ์การแพทย์":            "#C084FC",
+    "อาหารสัตว์-วัสดุสิ้นเปลือง": "#67E8F9",
+    "การตลาด":                    "#FCA5A5",
+}
+
 INCOME_CATS  = ["ตรวจโรคทั่วไป","ผ่าตัด","ฉีดวัคซีน","อาบน้ำ-ตัดขน",
                 "รับฝากสัตว์","เอกซเรย์ / Lab","ทันตกรรม","จำหน่ายยา-อาหาร"]
 EXPENSE_CATS = ["ยาและเวชภัณฑ์","ค่าเช่าสถานที่","เงินเดือนพนักงาน",
@@ -200,36 +234,59 @@ STATUSES     = ["ชำระแล้ว","รอชำระ","เกินก
 STATUS_ICON  = {"ชำระแล้ว":"✅","รอชำระ":"🕐","เกินกำหนด":"🔴","ผ่อนชำระ":"🔵"}
 STATUS_COLOR = {"ชำระแล้ว":"#4ADE80","รอชำระ":"#FBBF24","เกินกำหนด":"#F87171","ผ่อนชำระ":"#A78BFA"}
 
-CHART_BG = dict(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                font_color="#374151",
-                xaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B"),
-                yaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B"),
-                margin=dict(t=16, b=16, l=8, r=8))
-LEGEND_STYLE = dict(bgcolor="rgba(255,255,255,0.8)", font_size=11, font_color="#374151",
-                    bordercolor="#E2E8F0", borderwidth=1)
+APPT_STATUS_COLORS = {
+    "Available":    "#10B981",
+    "Booked":       "#3B82F6",
+    "Consult Only": "#F59E0B",
+    "Cancelled":    "#EF4444",
+}
+APPT_STATUSES = list(APPT_STATUS_COLORS.keys())
 
+# Chart layout base (NO legend key here — pass legend separately)
+CHART_BG = dict(
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    font_color="#374151",
+    xaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B"),
+    yaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B"),
+    margin=dict(t=16, b=16, l=8, r=8),
+)
+LEGEND_STYLE = dict(
+    bgcolor="rgba(255,255,255,0.8)",
+    font_size=11,
+    font_color="#374151",
+    bordercolor="#E2E8F0",
+    borderwidth=1,
+)
 
-# ─── Session state ────────────────────────────────────────────────────────────
+# ─── Session state ─────────────────────────────────────────────────────────────
 for _k, _v in [("drill_date", None), ("drill_cat", None), ("drill_pdf_cat", None),
                 ("drill_stock", None)]:
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# ─── Cached data loaders ───────────────────────────────────────────────────────
 @st.cache_data(ttl=30)
 def load_data() -> pd.DataFrame:
     df = fetch_all()
     df["transaction_date"] = pd.to_datetime(df["transaction_date"])
     return df
 
-@st.cache_data(ttl=60)
-def load_stock_items():   return fetch_stock_items()
+@st.cache_data(ttl=30)
+def load_appointments() -> pd.DataFrame:
+    return fetch_appointments()
 
 @st.cache_data(ttl=60)
-def load_stock_incoming(): return fetch_stock_incoming()
+def load_stock_items():
+    return fetch_stock_items()
+
+@st.cache_data(ttl=60)
+def load_stock_incoming():
+    return fetch_stock_incoming()
 
 
+# ─── Helper functions ──────────────────────────────────────────────────────────
 def fmt_thb(v: float) -> str:
     return f"฿{abs(v):,.0f}"
 
@@ -241,7 +298,7 @@ def delta_str(cur: float, prv: float):
 
 def month_range(y, m):
     s = date(y, m, 1)
-    e = (date(y, m+1, 1) if m < 12 else date(y+1,1,1)) - timedelta(days=1)
+    e = (date(y, m+1, 1) if m < 12 else date(y+1, 1, 1)) - timedelta(days=1)
     return pd.Timestamp(s), pd.Timestamp(e)
 
 def period_kpis(df, s, e):
@@ -250,7 +307,9 @@ def period_kpis(df, s, e):
     exp = sub.loc[sub["transaction_type"]=="รายจ่าย", "net_amount"].sum()
     return rev, exp, rev - exp
 
-def color_for(cat: str) -> str:
+def color_for(cat: str, expense: bool = False) -> str:
+    if expense:
+        return EXPENSE_CAT_COLORS.get(cat, "#94A3B8")
     return CAT_COLORS.get(cat, "#8ECDB0")
 
 def read_xls_bytes(file_bytes) -> pd.DataFrame:
@@ -300,7 +359,6 @@ def parse_pdf(pdf_bytes: bytes):
 
     try:
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-            # ── Page 1: header info ────────────────────────────────────────
             t1 = " ".join((pdf.pages[0].extract_text() or "").split())
             m = re.search(r"รวมใบเสร็จถ[^\d]*([\d]+)\s*รายการ\s*รวมใบเสร็จทง[^\d]*([\d]+)", t1)
             if m:
@@ -313,16 +371,7 @@ def parse_pdf(pdf_bytes: bytes):
             m = re.search(r"รวมเป.*?นเงนิ\s+([\d,]+)", t1)
             if m: info["total"] = float(m.group(1).replace(",",""))
 
-            # ── Page 2: summary by category ───────────────────────────────
             words2 = pdf.pages[1].extract_words()
-            amounts, labels = [], []
-            for w in words2:
-                txt = w["text"]
-                if re.match(r"[\d,]+\.\d{2}", txt):
-                    amounts.append(float(txt.replace(",","")))
-                elif txt == "บาท" and amounts and len(amounts) > len(labels):
-                    pass  # skip "บาท" word
-            # Better: reconstruct lines from word positions
             lines_pg2 = {}
             for w in words2:
                 y = round(w["top"] / 3) * 3
@@ -337,7 +386,6 @@ def parse_pdf(pdf_bytes: bytes):
                     if amt > 0 and cat_raw and "ยอดรวม" not in cat_raw:
                         summary_rows.append({"category": clean_cat(cat_raw), "amount": amt})
 
-            # ── Pages 3+: detailed item tables ────────────────────────────
             for page in pdf.pages[2:]:
                 tbl = page.extract_table()
                 if not tbl:
@@ -353,7 +401,6 @@ def parse_pdf(pdf_bytes: bytes):
                     )
                     if not item_name or not total_str:
                         continue
-                    # Skip header rows
                     if "รายการ" in item_name and "จํ" in qty_unit:
                         continue
                     try:
@@ -380,21 +427,24 @@ def parse_pdf(pdf_bytes: bytes):
     return info, summary_df, items_df
 
 
-# ─── Custom metric card ────────────────────────────────────────────────────────
-def kpi(col, icon, label, value, delta=None, delta_up=None, note=None):
+# ─── Custom KPI card ───────────────────────────────────────────────────────────
+def kpi(col, icon, label, value, delta=None, delta_up=None, note=None, accent=None):
     delta_html = ""
     if delta:
         clr = "#16A34A" if delta_up else "#DC2626"
         arr = "▲" if delta_up else "▼"
         delta_html = f'<p style="margin:4px 0 0;color:{clr};font-size:.78rem;font-weight:600">{arr} {delta}</p>'
     note_html = f'<p style="margin:4px 0 0;color:#94A3B8;font-size:.72rem">{note}</p>' if note else ""
+    bg = accent if accent else "#FFFFFF"
+    txt = "#FFFFFF" if accent else "#0F172A"
+    lbl_clr = "rgba(255,255,255,0.8)" if accent else "#64748B"
     col.markdown(f"""
-    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px;
-                padding:18px 22px 14px;height:100%;min-height:105px;
-                box-shadow:0 1px 4px rgba(0,0,0,0.06)">
-      <p style="margin:0;color:#64748B;font-size:.72rem;font-weight:600;
+    <div style="background:{bg};border:1px solid {'transparent' if accent else '#E2E8F0'};
+                border-radius:16px;padding:18px 22px 14px;height:100%;min-height:105px;
+                box-shadow:{'0 4px 12px rgba(124,58,237,0.25)' if accent else '0 1px 4px rgba(0,0,0,0.06)'}">
+      <p style="margin:0;color:{lbl_clr};font-size:.72rem;font-weight:600;
                 letter-spacing:.07em;text-transform:uppercase">{icon}&nbsp; {label}</p>
-      <p style="margin:8px 0 0;color:#0F172A;font-size:1.75rem;font-weight:700;line-height:1.1">{value}</p>
+      <p style="margin:8px 0 0;color:{txt};font-size:1.75rem;font-weight:700;line-height:1.1">{value}</p>
       {delta_html}{note_html}
     </div>""", unsafe_allow_html=True)
 
@@ -409,20 +459,33 @@ def drill_badge(label: str, key: str):
         st.rerun()
 
 
-# ─── Sidebar ──────────────────────────────────────────────────────────────────
+def appt_badge(status: str) -> str:
+    cls_map = {
+        "Available":    "badge-available",
+        "Booked":       "badge-booked",
+        "Consult Only": "badge-consult",
+        "Cancelled":    "badge-cancelled",
+    }
+    cls = cls_map.get(status, "badge-available")
+    return f'<span class="{cls}">{status}</span>'
+
+
+# ─── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style="padding:16px 0 8px">
-      <div style="font-size:1.4rem;font-weight:700;color:#0369A1;letter-spacing:-.02em">
+      <div style="font-size:1.4rem;font-weight:700;color:#7C3AED;letter-spacing:-.02em">
         🐾 เอสพี รักษาสัตว์
       </div>
       <div style="font-size:.75rem;color:#94A3B8;margin-top:2px">ระบบจัดการคลินิกสัตว์</div>
     </div>""", unsafe_allow_html=True)
     st.divider()
 
-    page = st.radio("", [
+    page = st.radio("เมนู", [
         "📊  ภาพรวมธุรกิจ",
-        "📒  รายรับ-รายจ่าย",
+        "💰  รายรับ-รายจ่าย",
+        "📅  ตารางนัดหมาย",
+        "👥  ลูกค้า & สัตว์",
         "💊  คลังยา & สินค้า",
         "📄  รายงานการเงิน",
     ], label_visibility="collapsed")
@@ -437,8 +500,8 @@ with st.sidebar:
     over = (df_s["payment_status"]=="เกินกำหนด").sum()
 
     st.markdown('<p style="color:#94A3B8;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase">วันนี้</p>', unsafe_allow_html=True)
-    st.markdown(f'<p style="margin:2px 0;color:#334155;font-size:.85rem">💰 รายรับ &nbsp;<strong style="color:#16A34A">{fmt_thb(rt)}</strong></p>', unsafe_allow_html=True)
-    st.markdown(f'<p style="margin:2px 0;color:#334155;font-size:.85rem">📤 รายจ่าย <strong style="color:#DC2626">{fmt_thb(et)}</strong></p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="margin:2px 0;color:#334155;font-size:.85rem">💰 รายรับ &nbsp;<strong style="color:#10B981">{fmt_thb(rt)}</strong></p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="margin:2px 0;color:#334155;font-size:.85rem">📤 รายจ่าย <strong style="color:#EF4444">{fmt_thb(et)}</strong></p>', unsafe_allow_html=True)
     if pend: st.markdown(f'<p style="margin:4px 0;color:#D97706;font-size:.82rem">🕐 รอชำระ <strong>{pend}</strong> รายการ</p>', unsafe_allow_html=True)
     if over: st.markdown(f'<p style="margin:4px 0;color:#DC2626;font-size:.82rem">🔴 เกินกำหนด <strong>{over}</strong> รายการ</p>', unsafe_allow_html=True)
 
@@ -448,14 +511,22 @@ with st.sidebar:
         out = (df_si["qty"] <= 0).sum()
         if low: st.markdown(f'<p style="margin:4px 0;color:#D97706;font-size:.82rem">⚠️ ใกล้หมด <strong>{low}</strong> รายการ</p>', unsafe_allow_html=True)
         if out: st.markdown(f'<p style="margin:4px 0;color:#DC2626;font-size:.82rem">🚨 หมดสต๊อก <strong>{out}</strong> รายการ</p>', unsafe_allow_html=True)
+
+    # Upcoming appointments count
+    df_ap = load_appointments()
+    if not df_ap.empty:
+        upcoming = df_ap[df_ap["appt_date"] >= today_d.isoformat()]
+        if len(upcoming):
+            st.markdown(f'<p style="margin:4px 0;color:#7C3AED;font-size:.82rem">📅 นัดหมายข้างหน้า <strong>{len(upcoming)}</strong> รายการ</p>', unsafe_allow_html=True)
+
     st.divider()
-    st.caption("SQLite Local  •  v2.1")
+    st.caption("SQLite Local  •  v3.0")
 
 df_all = load_data()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PAGE 1 — DASHBOARD
+# PAGE 1 — OVERVIEW DASHBOARD
 # ═══════════════════════════════════════════════════════════════════════════════
 if page == "📊  ภาพรวมธุรกิจ":
     st.title("📊 ภาพรวมธุรกิจ")
@@ -468,21 +539,28 @@ if page == "📊  ภาพรวมธุรกิจ":
     cr, ce_, cn = period_kpis(df_all, cs, ce)
     pr, pe_, pn = period_kpis(df_all, ps, pe)
 
-    rd, rc = delta_str(cr, pr);  ed, ec = delta_str(ce_, pe_);  nd, nc = delta_str(cn, pn)
+    rd, rc = delta_str(cr, pr)
+    ed, ec = delta_str(ce_, pe_)
+    nd, nc = delta_str(cn, pn)
     mask_m = (df_all["transaction_date"] >= cs) & (df_all["transaction_date"] <= ce)
     cases  = int((df_all[mask_m]["transaction_type"]=="รายรับ").sum())
 
-    k1,k2,k3,k4 = st.columns(4)
-    kpi(k1, "💰", "รายรับเดือนนี้",  fmt_thb(cr), rd,  rc=="normal",   f"เทียบเดือนก่อน {fmt_thb(pr)}")
-    kpi(k2, "📤", "รายจ่ายเดือนนี้", fmt_thb(ce_), ed, ec!="normal",   f"เทียบเดือนก่อน {fmt_thb(pe_)}")
-    kpi(k3, "📈", "กำไรสุทธิ",       fmt_thb(cn), nd,  nc=="normal",   f"เทียบเดือนก่อน {fmt_thb(pn)}")
-    kpi(k4, "🐾", "เคสเดือนนี้",     f"{cases} เคส", None, None, "รายการรายรับทั้งหมด")
+    # ── Row 1: KPI Cards ──────────────────────────────────────────────────────
+    k1, k2, k3, k4 = st.columns(4)
+    kpi(k1, "💰", "รายรับเดือนนี้",  fmt_thb(cr), rd,  rc=="normal",
+        f"เทียบเดือนก่อน {fmt_thb(pr)}", accent="#10B981")
+    kpi(k2, "📤", "รายจ่ายเดือนนี้", fmt_thb(ce_), ed, ec!="normal",
+        f"เทียบเดือนก่อน {fmt_thb(pe_)}", accent="#EF4444")
+    kpi(k3, "📈", "กำไรสุทธิ",       fmt_thb(cn), nd,  nc=="normal",
+        f"เทียบเดือนก่อน {fmt_thb(pn)}", accent="#7C3AED")
+    kpi(k4, "🐾", "จำนวนเคสเดือนนี้", f"{cases} เคส", None, None,
+        "รายการรายรับทั้งหมด", accent="#3B82F6")
     st.divider()
 
     # Period filter
     min_d = df_all["transaction_date"].min().date() if not df_all.empty else date(2024,1,1)
     max_d = max(df_all["transaction_date"].max().date() if not df_all.empty else today, today)
-    fc1,fc2,_fc = st.columns([1,1,3])
+    fc1, fc2, _fc = st.columns([1, 1, 3])
     d_from = fc1.date_input("ตั้งแต่", value=cs.date(), min_value=min_d, max_value=max_d)
     d_to   = fc2.date_input("ถึง",     value=today,     min_value=min_d, max_value=max_d)
     df_p = df_all[
@@ -491,7 +569,197 @@ if page == "📊  ภาพรวมธุรกิจ":
     ].copy()
     st.divider()
 
-    # ── Row 1: Daily bar + Service donut ─────────────────────────────────────
+    # ── Row 2: Income Pie + Income Table ─────────────────────────────────────
+    df_inc = df_p[df_p["transaction_type"]=="รายรับ"]
+    rc1, rc2 = st.columns([55, 45])
+
+    with rc1:
+        st.markdown("## 🥧 รายได้แยกตามประเภทบริการ")
+        if not df_inc.empty:
+            cat_i = df_inc.groupby("category")["net_amount"].sum().reset_index()
+            cat_i = cat_i.sort_values("net_amount", ascending=False)
+            cat_i["color"] = cat_i["category"].map(color_for)
+            total_inc = cat_i["net_amount"].sum()
+            cat_i["pct"] = cat_i["net_amount"] / total_inc * 100
+
+            fig_pie = go.Figure(go.Pie(
+                labels=cat_i["category"],
+                values=cat_i["net_amount"],
+                hole=0,
+                marker_colors=cat_i["color"].tolist(),
+                textposition="inside",
+                textinfo="percent",
+                hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>%{percent}<extra></extra>",
+            ))
+            fig_pie.update_layout(
+                **CHART_BG,
+                height=320,
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="top",
+                    y=-0.15,
+                    xanchor="center",
+                    x=0.5,
+                    **{k: v for k, v in LEGEND_STYLE.items()},
+                ),
+                margin=dict(t=10, b=80, l=10, r=10),
+            )
+            ev_pie = st.plotly_chart(fig_pie, key="pie_income", on_select="rerun",
+                                     use_container_width=True)
+            pts_pie = ev_pie.selection.points if ev_pie.selection else []
+            if pts_pie:
+                pt = pts_pie[0]
+                lbl = pt.get("label") if isinstance(pt, dict) else getattr(pt, "label", None)
+                if not lbl:
+                    lbl = pt.get("x") if isinstance(pt, dict) else getattr(pt, "x", None)
+                if lbl:
+                    st.session_state.drill_cat  = lbl
+                    st.session_state.drill_date = None
+        else:
+            st.info("ไม่มีข้อมูลรายรับ")
+
+    with rc2:
+        st.markdown("## 📋 รายได้แยกตามประเภทสินค้าและบริการ")
+        if not df_inc.empty:
+            cat_i2 = df_inc.groupby("category").agg(
+                จำนวนเคส=("id", "count"),
+                ยอดรวม=("net_amount", "sum")
+            ).reset_index()
+            cat_i2 = cat_i2.sort_values("ยอดรวม", ascending=False)
+            total_i2 = cat_i2["ยอดรวม"].sum()
+            cat_i2["สัดส่วน"] = (cat_i2["ยอดรวม"] / total_i2 * 100).round(1)
+            cat_i2["color"] = cat_i2["category"].map(color_for)
+
+            # Render as styled table
+            rows_html = ""
+            for _, row in cat_i2.iterrows():
+                rows_html += f"""
+                <tr style="border-bottom:1px solid #F1F5F9">
+                  <td style="padding:8px 6px;font-size:.83rem">
+                    <span class="dot" style="background:{row['color']}"></span>{row['category']}
+                  </td>
+                  <td style="padding:8px 6px;text-align:center;font-size:.83rem">{int(row['จำนวนเคส'])}</td>
+                  <td style="padding:8px 6px;text-align:right;font-size:.83rem">฿{row['ยอดรวม']:,.0f}</td>
+                  <td style="padding:8px 6px;text-align:right;font-size:.83rem;font-weight:700;color:#10B981">{row['สัดส่วน']:.1f}%</td>
+                </tr>"""
+            st.markdown(f"""
+            <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;
+                        padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);overflow-y:auto;max-height:380px">
+              <table style="width:100%;border-collapse:collapse">
+                <thead>
+                  <tr style="border-bottom:2px solid #E2E8F0">
+                    <th style="padding:8px 6px;text-align:left;font-size:.78rem;color:#64748B;font-weight:600">ประเภท</th>
+                    <th style="padding:8px 6px;text-align:center;font-size:.78rem;color:#64748B;font-weight:600">จำนวนเคส</th>
+                    <th style="padding:8px 6px;text-align:right;font-size:.78rem;color:#64748B;font-weight:600">ยอดรวม (฿)</th>
+                    <th style="padding:8px 6px;text-align:right;font-size:.78rem;color:#64748B;font-weight:600">สัดส่วน (%)</th>
+                  </tr>
+                </thead>
+                <tbody>{rows_html}</tbody>
+              </table>
+            </div>""", unsafe_allow_html=True)
+        else:
+            st.info("ไม่มีข้อมูลรายรับ")
+
+    st.divider()
+
+    # ── Row 3: Service Donut + Service Table ──────────────────────────────────
+    rd1, rd2 = st.columns([55, 45])
+
+    with rd1:
+        st.markdown("## 🍩 รายได้แยกตามบริการ (Donut)")
+        if not df_inc.empty:
+            cat_d = df_inc.groupby("category")["net_amount"].sum().reset_index()
+            cat_d = cat_d.sort_values("net_amount", ascending=False)
+            cat_d["color"] = cat_d["category"].map(color_for)
+            total_d = cat_d["net_amount"].sum()
+
+            fig_donut = go.Figure(go.Pie(
+                labels=cat_d["category"],
+                values=cat_d["net_amount"],
+                hole=0.55,
+                marker_colors=cat_d["color"].tolist(),
+                textposition="inside",
+                textinfo="percent",
+                hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>%{percent}<extra></extra>",
+            ))
+            fig_donut.update_layout(
+                **CHART_BG,
+                height=320,
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="top",
+                    y=-0.15,
+                    xanchor="center",
+                    x=0.5,
+                    **{k: v for k, v in LEGEND_STYLE.items()},
+                ),
+                margin=dict(t=10, b=80, l=10, r=10),
+                annotations=[dict(
+                    text=f"รวม<br><b>฿{total_d:,.0f}</b>",
+                    x=0.5, y=0.5,
+                    font_size=13,
+                    font_color="#374151",
+                    showarrow=False,
+                )],
+            )
+            ev_donut = st.plotly_chart(fig_donut, key="donut_service", on_select="rerun",
+                                       use_container_width=True)
+            pts_donut = ev_donut.selection.points if ev_donut.selection else []
+            if pts_donut:
+                pt = pts_donut[0]
+                lbl = pt.get("label") if isinstance(pt, dict) else getattr(pt, "label", None)
+                if lbl:
+                    st.session_state.drill_cat  = lbl
+                    st.session_state.drill_date = None
+        else:
+            st.info("ไม่มีข้อมูลรายรับ")
+
+    with rd2:
+        st.markdown("## 📋 รายการบริการ")
+        if not df_inc.empty:
+            svc_df = df_inc.groupby("category").agg(
+                จำนวน=("id", "count"),
+                ยอดรวม=("net_amount", "sum")
+            ).reset_index()
+            svc_df = svc_df.sort_values("ยอดรวม", ascending=False)
+            total_svc = svc_df["ยอดรวม"].sum()
+            svc_df["สัดส่วน"] = (svc_df["ยอดรวม"] / total_svc * 100).round(1)
+            svc_df["color"] = svc_df["category"].map(color_for)
+
+            rows_html2 = ""
+            for _, row in svc_df.iterrows():
+                rows_html2 += f"""
+                <tr style="border-bottom:1px solid #F1F5F9">
+                  <td style="padding:8px 6px;font-size:.83rem">
+                    <span class="dot" style="background:{row['color']}"></span>{row['category']}
+                  </td>
+                  <td style="padding:8px 6px;text-align:center;font-size:.83rem">{int(row['จำนวน'])}</td>
+                  <td style="padding:8px 6px;text-align:right;font-size:.83rem">฿{row['ยอดรวม']:,.0f}</td>
+                  <td style="padding:8px 6px;text-align:right;font-size:.83rem;font-weight:700;color:#06B6D4">{row['สัดส่วน']:.1f}%</td>
+                </tr>"""
+            st.markdown(f"""
+            <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;
+                        padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);overflow-y:auto;max-height:380px">
+              <table style="width:100%;border-collapse:collapse">
+                <thead>
+                  <tr style="border-bottom:2px solid #E2E8F0">
+                    <th style="padding:8px 6px;text-align:left;font-size:.78rem;color:#64748B;font-weight:600">บริการ</th>
+                    <th style="padding:8px 6px;text-align:center;font-size:.78rem;color:#64748B;font-weight:600">จำนวน</th>
+                    <th style="padding:8px 6px;text-align:right;font-size:.78rem;color:#64748B;font-weight:600">ยอดรวม (฿)</th>
+                    <th style="padding:8px 6px;text-align:right;font-size:.78rem;color:#64748B;font-weight:600">สัดส่วน (%)</th>
+                  </tr>
+                </thead>
+                <tbody>{rows_html2}</tbody>
+              </table>
+            </div>""", unsafe_allow_html=True)
+        else:
+            st.info("ไม่มีข้อมูลรายรับ")
+
+    st.divider()
+
+    # ── Row 4: Daily bar + Pending ────────────────────────────────────────────
     cc1, cc2 = st.columns([3, 2])
 
     with cc1:
@@ -501,21 +769,24 @@ if page == "📊  ภาพรวมธุรกิจ":
             daily = df_p.groupby(["transaction_date","transaction_type"])["net_amount"].sum().reset_index()
             daily["ds"] = daily["transaction_date"].dt.strftime("%Y-%m-%d")
             fig_bar = go.Figure()
-            for tt, clr in [("รายรับ","#00C26B"),("รายจ่าย","#F87171")]:
+            for tt, clr in [("รายรับ","#10B981"),("รายจ่าย","#EF4444")]:
                 d_ = daily[daily["transaction_type"]==tt]
                 fig_bar.add_trace(go.Bar(
                     x=d_["ds"], y=d_["net_amount"], name=tt,
                     marker_color=clr, marker_line_width=0,
                     hovertemplate=f"<b>%{{x}}</b><br>{tt}: ฿%{{y:,.0f}}<extra></extra>",
                 ))
-            fig_bar.update_layout(**CHART_BG, barmode="group", height=300,
-                                   bargap=0.25, bargroupgap=0.08,
-                                   legend=LEGEND_STYLE)
+            fig_bar.update_layout(
+                **CHART_BG,
+                barmode="group", height=300,
+                bargap=0.25, bargroupgap=0.08,
+                legend=LEGEND_STYLE,
+            )
             ev1 = st.plotly_chart(fig_bar, key="bar_daily", on_select="rerun",
                                   use_container_width=True)
             pts1 = ev1.selection.points if ev1.selection else []
             if pts1:
-                xv = pts1[0].get("x") if isinstance(pts1[0], dict) else getattr(pts1[0],"x",None)
+                xv = pts1[0].get("x") if isinstance(pts1[0], dict) else getattr(pts1[0], "x", None)
                 if xv:
                     st.session_state.drill_date = str(xv)[:10]
                     st.session_state.drill_cat  = None
@@ -523,66 +794,6 @@ if page == "📊  ภาพรวมธุรกิจ":
             st.info("ไม่มีข้อมูลในช่วงที่เลือก")
 
     with cc2:
-        st.markdown("## 🥧 รายรับตามบริการ")
-        st.caption("คลิกที่ slice เพื่อ drilldown")
-        df_inc = df_p[df_p["transaction_type"]=="รายรับ"]
-        if not df_inc.empty:
-            cat_i = df_inc.groupby("category")["net_amount"].sum().reset_index()
-            cat_i["color"] = cat_i["category"].map(lambda c: color_for(c))
-            fig_pie = go.Figure(go.Pie(
-                labels=cat_i["category"], values=cat_i["net_amount"],
-                hole=0.52,
-                marker_colors=cat_i["color"].tolist(),
-                textposition="inside", textinfo="percent",
-                hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>%{percent}<extra></extra>",
-            ))
-            fig_pie.update_layout(**{**CHART_BG, "margin": dict(t=16,b=16,l=16,r=16)},
-                                   height=300, showlegend=True, legend=LEGEND_STYLE)
-            ev2 = st.plotly_chart(fig_pie, key="pie_service", on_select="rerun",
-                                  use_container_width=True)
-            pts2 = ev2.selection.points if ev2.selection else []
-            if pts2:
-                pt2 = pts2[0]
-                lbl = pt2.get("label") if isinstance(pt2,dict) else getattr(pt2,"label",None)
-                if not lbl:
-                    lbl = pt2.get("x") if isinstance(pt2,dict) else getattr(pt2,"x",None)
-                if lbl:
-                    st.session_state.drill_cat  = lbl
-                    st.session_state.drill_date = None
-        else:
-            st.info("ไม่มีข้อมูลรายรับ")
-
-    # ── Row 2: Expense bar + Pending ─────────────────────────────────────────
-    ec1, ec2 = st.columns([2, 3])
-
-    with ec1:
-        st.markdown("## 📊 รายจ่ายตามหมวด")
-        st.caption("คลิกที่แท่งเพื่อ drilldown")
-        df_exp = df_p[df_p["transaction_type"]=="รายจ่าย"]
-        if not df_exp.empty:
-            cat_e = df_exp.groupby("category")["net_amount"].sum().reset_index().sort_values("net_amount")
-            cat_e["color"] = cat_e["category"].map(lambda c: color_for(c))
-            fig_hbar = go.Figure(go.Bar(
-                x=cat_e["net_amount"], y=cat_e["category"],
-                orientation="h",
-                marker_color=cat_e["color"].tolist(),
-                marker_line_width=0,
-                hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<extra></extra>",
-            ))
-            fig_hbar.update_layout(**CHART_BG, height=280)
-            ev3 = st.plotly_chart(fig_hbar, key="bar_expense", on_select="rerun",
-                                  use_container_width=True)
-            pts3 = ev3.selection.points if ev3.selection else []
-            if pts3:
-                pt3 = pts3[0]
-                yv  = pt3.get("y") if isinstance(pt3,dict) else getattr(pt3,"y",None)
-                if yv:
-                    st.session_state.drill_cat  = yv
-                    st.session_state.drill_date = None
-        else:
-            st.info("ไม่มีข้อมูลรายจ่าย")
-
-    with ec2:
         st.markdown("## ⚠️ รายการค้างชำระ")
         df_alert = df_all[df_all["payment_status"].isin(["รอชำระ","เกินกำหนด"])].copy()
         if not df_alert.empty:
@@ -597,10 +808,37 @@ if page == "📊  ภาพรวมธุรกิจ":
 
     st.divider()
 
-    # ── Drilldown transaction table ───────────────────────────────────────────
+    # ── Expense horizontal bar ────────────────────────────────────────────────
+    st.markdown("## 📊 รายจ่ายตามหมวดหมู่")
+    df_exp = df_p[df_p["transaction_type"]=="รายจ่าย"]
+    if not df_exp.empty:
+        cat_e = df_exp.groupby("category")["net_amount"].sum().reset_index().sort_values("net_amount")
+        cat_e["color"] = cat_e["category"].map(lambda c: color_for(c, expense=True))
+        fig_hbar = go.Figure(go.Bar(
+            x=cat_e["net_amount"], y=cat_e["category"],
+            orientation="h",
+            marker_color=cat_e["color"].tolist(),
+            marker_line_width=0,
+            hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<extra></extra>",
+        ))
+        fig_hbar.update_layout(**CHART_BG, height=280)
+        ev3 = st.plotly_chart(fig_hbar, key="bar_expense", on_select="rerun",
+                              use_container_width=True)
+        pts3 = ev3.selection.points if ev3.selection else []
+        if pts3:
+            pt3 = pts3[0]
+            yv = pt3.get("y") if isinstance(pt3, dict) else getattr(pt3, "y", None)
+            if yv:
+                st.session_state.drill_cat  = yv
+                st.session_state.drill_date = None
+    else:
+        st.info("ไม่มีข้อมูลรายจ่าย")
+
+    st.divider()
+
+    # ── Drilldown table ────────────────────────────────────────────────────────
     df_drill = df_p.copy()
     drill_label = None
-
     if st.session_state.drill_date:
         df_drill   = df_drill[df_drill["transaction_date"].dt.strftime("%Y-%m-%d") == st.session_state.drill_date]
         drill_label = st.session_state.drill_date
@@ -613,7 +851,6 @@ if page == "📊  ภาพรวมธุรกิจ":
 
     title_sfx = f" — {drill_label}" if drill_label else f" ({d_from} → {d_to})"
     st.markdown(f"## 📋 รายการธุรกรรม{title_sfx}")
-
     if not df_drill.empty:
         sh2 = df_drill[["transaction_date","transaction_type","category",
                         "client_name","pet_name","net_amount","payment_status"]].copy()
@@ -623,34 +860,34 @@ if page == "📊  ภาพรวมธุรกิจ":
         st.dataframe(sh2, use_container_width=True, height=360, hide_index=True)
         t_in  = df_drill[df_drill["transaction_type"]=="รายรับ"]["net_amount"].sum()
         t_out = df_drill[df_drill["transaction_type"]=="รายจ่าย"]["net_amount"].sum()
-        m1,m2,m3 = st.columns(3)
+        m1, m2, m3 = st.columns(3)
         m1.metric("รายรับ", fmt_thb(t_in))
         m2.metric("รายจ่าย", fmt_thb(t_out))
-        m3.metric("กำไรสุทธิ", fmt_thb(t_in-t_out))
+        m3.metric("กำไรสุทธิ", fmt_thb(t_in - t_out))
         st.caption(f"แสดง {len(sh2):,} รายการ")
     else:
         st.info("ไม่มีรายการในช่วงที่เลือก")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PAGE 2 — LEDGER
+# PAGE 2 — LEDGER (รายรับ-รายจ่าย)
 # ═══════════════════════════════════════════════════════════════════════════════
-elif page == "📒  รายรับ-รายจ่าย":
-    st.title("📒 บันทึกรายรับ-รายจ่าย")
+elif page == "💰  รายรับ-รายจ่าย":
+    st.title("💰 บันทึกรายรับ-รายจ่าย")
 
     with st.expander("➕  เพิ่มรายการใหม่", expanded=True):
         with st.form("add_tx", clear_on_submit=True):
-            fa1,fa2,fa3 = st.columns(3)
+            fa1, fa2, fa3 = st.columns(3)
             tx_date  = fa1.date_input("วันที่", value=date.today())
             tx_type  = fa2.radio("ประเภท", ["รายรับ","รายจ่าย"], horizontal=True)
             tx_cat   = fa3.selectbox("หมวดหมู่", INCOME_CATS if tx_type=="รายรับ" else EXPENSE_CATS)
 
-            fb1,fb2,fb3 = st.columns(3)
+            fb1, fb2, fb3 = st.columns(3)
             client  = fb1.text_input("ชื่อเจ้าของสัตว์ / ผู้จำหน่าย")
             pet     = fb2.text_input("ชื่อสัตว์เลี้ยง", placeholder="ถ้ามี")
             amount  = fb3.number_input("จำนวนเงิน (฿)", min_value=0.0, step=100.0, format="%.2f")
 
-            fc1_,fc2_,fc3_ = st.columns(3)
+            fc1_, fc2_, fc3_ = st.columns(3)
             tx_status = fc1_.selectbox("สถานะการชำระ", STATUSES)
             use_tax   = fc2_.toggle("หักภาษี?", value=False)
             tax_rate  = fc3_.selectbox("อัตราภาษี", ["3% WHT","7% VAT"], disabled=not use_tax)
@@ -670,13 +907,21 @@ elif page == "📒  รายรับ-รายจ่าย":
                     if receipt:
                         os.makedirs(UPLOADS_DIR, exist_ok=True)
                         fp = os.path.join(UPLOADS_DIR, f"{tx_date}_{client.strip().replace(' ','_')}_{receipt.name}")
-                        with open(fp,"wb") as f: f.write(receipt.getbuffer())
-                    insert_transaction({"transaction_date":tx_date.isoformat(), "transaction_type":tx_type,
-                                        "category":tx_cat, "client_name":client.strip(),
-                                        "pet_name":pet.strip() or None, "amount":amount,
-                                        "tax_deduction":tax, "net_amount":round(amount-tax,2),
-                                        "payment_status":tx_status, "note":note.strip() or None,
-                                        "receipt_file_path":fp})
+                        with open(fp, "wb") as f:
+                            f.write(receipt.getbuffer())
+                    insert_transaction({
+                        "transaction_date":  tx_date.isoformat(),
+                        "transaction_type":  tx_type,
+                        "category":          tx_cat,
+                        "client_name":       client.strip(),
+                        "pet_name":          pet.strip() or None,
+                        "amount":            amount,
+                        "tax_deduction":     tax,
+                        "net_amount":        round(amount - tax, 2),
+                        "payment_status":    tx_status,
+                        "note":              note.strip() or None,
+                        "receipt_file_path": fp,
+                    })
                     st.success("✅ บันทึกเรียบร้อยแล้ว!")
                     st.cache_data.clear(); st.rerun()
 
@@ -684,16 +929,15 @@ elif page == "📒  รายรับ-รายจ่าย":
     st.markdown("## 📋 ตารางรายการ")
     df_all = load_data()
 
-    # ── Global filters ──────────────────────────────────────────────────────
     gf1, gf2, gf3 = st.columns(3)
-    gs = gf1.multiselect("สถานะ", STATUSES, default=STATUSES)
-    sr = gf2.text_input("🔍 ค้นหาชื่อ")
+    gs         = gf1.multiselect("สถานะ", STATUSES, default=STATUSES)
+    sr         = gf2.text_input("🔍 ค้นหาชื่อ")
     date_range = gf3.date_input("ช่วงวันที่", value=[], help="เลือก 1 วัน หรือ 2 วันเพื่อกำหนดช่วง")
 
     dv = df_all[df_all["payment_status"].isin(gs)]
     if sr:
-        dv = dv[dv["client_name"].str.contains(sr,case=False,na=False) |
-                dv["pet_name"].fillna("").str.contains(sr,case=False,na=False)]
+        dv = dv[dv["client_name"].str.contains(sr, case=False, na=False) |
+                dv["pet_name"].fillna("").str.contains(sr, case=False, na=False)]
     if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
         dv = dv[(dv["transaction_date"].dt.date >= date_range[0]) &
                 (dv["transaction_date"].dt.date <= date_range[1])]
@@ -701,8 +945,8 @@ elif page == "📒  รายรับ-รายจ่าย":
     def render_table(df_sub, type_label, cat_list):
         f1, f2 = st.columns(2)
         sel_cat = f1.multiselect(f"หมวดหมู่{type_label}", cat_list, key=f"cat_{type_label}")
-        if sel_cat: df_sub = df_sub[df_sub["category"].isin(sel_cat)]
-
+        if sel_cat:
+            df_sub = df_sub[df_sub["category"].isin(sel_cat)]
         sh = df_sub[["id","transaction_date","category","client_name",
                      "pet_name","amount","tax_deduction","net_amount",
                      "payment_status","note"]].copy()
@@ -714,35 +958,60 @@ elif page == "📒  รายรับ-รายจ่าย":
         st.caption(f"แสดง {len(sh):,} รายการ  •  รวม {fmt_thb(df_sub['net_amount'].sum())}")
         return df_sub
 
-    tab_in, tab_out, tab_all = st.tabs(["💰 รายรับ", "📤 รายจ่าย", "📊 รวม"])
+    tab_in, tab_out, tab_all2 = st.tabs(["💰 รายรับ", "📤 รายจ่าย", "📊 รวม"])
 
     with tab_in:
         df_in = dv[dv["transaction_type"]=="รายรับ"].copy()
-        kpi1,kpi2,kpi3 = st.columns(3)
-        kpi(kpi1,"💰","รายรับรวม", fmt_thb(df_in["net_amount"].sum()))
-        kpi(kpi2,"🧾","จำนวนรายการ", f"{len(df_in):,} รายการ")
-        kpi(kpi3,"📅","เฉลี่ย/รายการ",
+        kpi1, kpi2, kpi3 = st.columns(3)
+        kpi(kpi1, "💰", "รายรับรวม",      fmt_thb(df_in["net_amount"].sum()))
+        kpi(kpi2, "🧾", "จำนวนรายการ",    f"{len(df_in):,} รายการ")
+        kpi(kpi3, "📅", "เฉลี่ย/รายการ",
             fmt_thb(df_in["net_amount"].mean()) if len(df_in) else "฿0")
         st.divider()
+
+        # Daily bar for income
+        if not df_in.empty:
+            daily_in = df_in.groupby("transaction_date")["net_amount"].sum().reset_index()
+            daily_in["ds"] = daily_in["transaction_date"].dt.strftime("%Y-%m-%d")
+            fig_din = go.Figure(go.Bar(
+                x=daily_in["ds"], y=daily_in["net_amount"],
+                marker_color="#10B981", marker_line_width=0,
+                hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
+            ))
+            fig_din.update_layout(**CHART_BG, height=220, showlegend=False)
+            st.plotly_chart(fig_din, use_container_width=True)
+
         render_table(df_in, "รายรับ", INCOME_CATS)
 
     with tab_out:
         df_out = dv[dv["transaction_type"]=="รายจ่าย"].copy()
-        kpi1,kpi2,kpi3 = st.columns(3)
-        kpi(kpi1,"📤","รายจ่ายรวม", fmt_thb(df_out["net_amount"].sum()))
-        kpi(kpi2,"🧾","จำนวนรายการ", f"{len(df_out):,} รายการ")
-        kpi(kpi3,"📅","เฉลี่ย/รายการ",
+        kpi1, kpi2, kpi3 = st.columns(3)
+        kpi(kpi1, "📤", "รายจ่ายรวม",   fmt_thb(df_out["net_amount"].sum()))
+        kpi(kpi2, "🧾", "จำนวนรายการ",  f"{len(df_out):,} รายการ")
+        kpi(kpi3, "📅", "เฉลี่ย/รายการ",
             fmt_thb(df_out["net_amount"].mean()) if len(df_out) else "฿0")
         st.divider()
+
+        if not df_out.empty:
+            daily_out = df_out.groupby("transaction_date")["net_amount"].sum().reset_index()
+            daily_out["ds"] = daily_out["transaction_date"].dt.strftime("%Y-%m-%d")
+            fig_dout = go.Figure(go.Bar(
+                x=daily_out["ds"], y=daily_out["net_amount"],
+                marker_color="#EF4444", marker_line_width=0,
+                hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
+            ))
+            fig_dout.update_layout(**CHART_BG, height=220, showlegend=False)
+            st.plotly_chart(fig_dout, use_container_width=True)
+
         render_table(df_out, "รายจ่าย", EXPENSE_CATS)
 
-    with tab_all:
+    with tab_all2:
         ti = dv[dv["transaction_type"]=="รายรับ"]["net_amount"].sum()
-        to = dv[dv["transaction_type"]=="รายจ่าย"]["net_amount"].sum()
-        s1,s2,s3 = st.columns(3)
-        kpi(s1,"💰","รายรับ", fmt_thb(ti))
-        kpi(s2,"📤","รายจ่าย", fmt_thb(to))
-        kpi(s3,"📈","กำไรสุทธิ", fmt_thb(ti-to), delta_up=(ti-to)>=0)
+        to_ = dv[dv["transaction_type"]=="รายจ่าย"]["net_amount"].sum()
+        s1, s2, s3 = st.columns(3)
+        kpi(s1, "💰", "รายรับ", fmt_thb(ti))
+        kpi(s2, "📤", "รายจ่าย", fmt_thb(to_))
+        kpi(s3, "📈", "กำไรสุทธิ", fmt_thb(ti - to_), delta_up=(ti - to_) >= 0)
         st.divider()
         sh_all = dv[["id","transaction_date","transaction_type","category",
                      "client_name","pet_name","net_amount","payment_status","note"]].copy()
@@ -753,11 +1022,14 @@ elif page == "📒  รายรับ-รายจ่าย":
         st.caption(f"แสดง {len(sh_all):,} จาก {len(df_all):,} รายการ")
 
     st.divider()
-    ec_,ic_ = st.columns(2)
+    ec_, ic_ = st.columns(2)
     with ec_:
         st.markdown("**⬇️ Export CSV**")
-        st.download_button("ดาวน์โหลดทั้งหมด", data=df_all.to_csv(index=False).encode("utf-8-sig"),
-                           file_name="vetclinic_transactions.csv", mime="text/csv", use_container_width=True)
+        st.download_button("ดาวน์โหลดทั้งหมด",
+                           data=df_all.to_csv(index=False).encode("utf-8-sig"),
+                           file_name="vetclinic_transactions.csv",
+                           mime="text/csv",
+                           use_container_width=True)
     with ic_:
         st.markdown("**⬆️ Import CSV**")
         cu = st.file_uploader("อัปโหลด CSV", type=["csv"], key="csv_imp")
@@ -766,14 +1038,250 @@ elif page == "📒  รายรับ-รายจ่าย":
                 di = pd.read_csv(cu)
                 st.dataframe(di.head(5))
                 if st.button("✅ ยืนยันนำเข้า", use_container_width=True):
-                    bulk_insert_from_df(di); st.success(f"นำเข้า {len(di)} รายการ")
+                    bulk_insert_from_df(di)
+                    st.success(f"นำเข้า {len(di)} รายการ")
                     st.cache_data.clear(); st.rerun()
             except Exception as e:
                 st.error(f"Error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PAGE 3 — STOCK
+# PAGE 3 — CALENDAR (ตารางนัดหมาย)
+# ═══════════════════════════════════════════════════════════════════════════════
+elif page == "📅  ตารางนัดหมาย":
+    st.title("📅 ตารางนัดหมาย")
+
+    hdr1, hdr2, hdr3 = st.columns([5, 1, 1])
+    with hdr2:
+        if st.button("🔄 รีเฟรช", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    with hdr3:
+        add_new = st.button("➕ เพิ่มนัดหมาย", use_container_width=True)
+
+    df_appt = load_appointments()
+
+    # Build calendar events
+    events = []
+    for _, row in df_appt.iterrows():
+        color = APPT_STATUS_COLORS.get(row["status"], "#94A3B8")
+        pet_label = row["pet_name"] if row["pet_name"] else "ไม่ระบุ"
+        events.append({
+            "title": f"{row['vet_name']} | {pet_label}",
+            "start": f"{row['appt_date']}T{row['start_time']}",
+            "end":   f"{row['appt_date']}T{row['end_time']}",
+            "color": color,
+            "id":    str(row["id"]),
+        })
+
+    # Calendar options
+    calendar_options = {
+        "initialView":   "dayGridMonth",
+        "locale":        "th",
+        "initialDate":   "2026-04-01",
+        "headerToolbar": {
+            "left":   "prev,next today",
+            "center": "title",
+            "right":  "dayGridMonth,timeGridWeek,listMonth",
+        },
+        "selectable": True,
+        "navLinks":   True,
+        "height":     580,
+    }
+
+    cal_css = """
+    .fc-event { font-size: 0.78rem !important; border-radius: 4px !important; padding: 1px 4px !important; }
+    .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 700 !important; color: #374151 !important; }
+    .fc-button { background: #7C3AED !important; border-color: #7C3AED !important; font-size: 0.78rem !important; }
+    .fc-button:hover { background: #6D28D9 !important; }
+    .fc-today-button { background: #10B981 !important; border-color: #10B981 !important; }
+    .fc-daygrid-day-number { color: #374151 !important; }
+    .fc-col-header-cell { background: #F8FAFC !important; }
+    """
+
+    col_cal, col_panel = st.columns([7, 3])
+
+    with col_cal:
+        try:
+            from streamlit_calendar import calendar as st_calendar
+            cal_result = st_calendar(
+                events=events,
+                options=calendar_options,
+                custom_css=cal_css,
+                key="main_calendar",
+            )
+        except ImportError:
+            st.warning("กรุณาติดตั้ง streamlit-calendar: `pip install streamlit-calendar`")
+            cal_result = None
+            # Fallback: show events as table
+            if not df_appt.empty:
+                disp = df_appt[["appt_date","start_time","end_time","vet_name","client_name","pet_name","service_type","status"]].copy()
+                disp.columns = ["วันที่","เริ่ม","สิ้นสุด","สัตวแพทย์","เจ้าของ","สัตว์","บริการ","สถานะ"]
+                st.dataframe(disp, use_container_width=True, height=450, hide_index=True)
+
+    with col_panel:
+        st.markdown("### 📌 นัดหมายที่เลือก")
+
+        today_str = date.today().isoformat()
+        next_30 = (date.today() + timedelta(days=30)).isoformat()
+        upcoming_df = df_appt[
+            (df_appt["appt_date"] >= today_str) &
+            (df_appt["appt_date"] <= next_30)
+        ].sort_values(["appt_date","start_time"]).reset_index(drop=True)
+
+        if upcoming_df.empty:
+            st.info("ไม่มีนัดหมายใน 30 วันข้างหน้า")
+        else:
+            for idx, row in upcoming_df.iterrows():
+                status_badge = appt_badge(row["status"])
+                pet_lbl = row["pet_name"] if row["pet_name"] else "ไม่ระบุ"
+                with st.container():
+                    st.markdown(f"""
+                    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;
+                                padding:10px 12px;margin-bottom:8px;
+                                box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                        <span style="font-size:.78rem;font-weight:700;color:#1E293B">#{idx+1} {pet_lbl}</span>
+                        {status_badge}
+                      </div>
+                      <div style="font-size:.75rem;color:#64748B">👤 {row['client_name']}</div>
+                      <div style="font-size:.75rem;color:#64748B">📅 {row['appt_date']} &nbsp; ⏰ {row['start_time']}–{row['end_time']}</div>
+                      <div style="font-size:.75rem;color:#7C3AED">🩺 {row['vet_name']}</div>
+                    </div>""", unsafe_allow_html=True)
+                    if st.button(f"🗑️ ลบ #{idx+1}", key=f"del_appt_{row['id']}", use_container_width=True):
+                        delete_appointment(int(row["id"]))
+                        st.success("ลบนัดหมายแล้ว")
+                        st.cache_data.clear()
+                        st.rerun()
+
+    # ── Add appointment form ───────────────────────────────────────────────────
+    st.divider()
+    with st.expander("➕ เพิ่มนัดหมายใหม่", expanded=add_new):
+        with st.form("add_appt", clear_on_submit=True):
+            ap1, ap2, ap3 = st.columns(3)
+            appt_date   = ap1.date_input("วันที่นัดหมาย", value=date.today())
+            start_time  = ap2.time_input("เวลาเริ่ม",    value=None)
+            end_time    = ap3.time_input("เวลาสิ้นสุด", value=None)
+
+            ap4, ap5, ap6 = st.columns(3)
+            vet_name    = ap4.selectbox("สัตวแพทย์", ["สพ.ญ. มาลี ใจดี","สพ.ญ. สุดา รักสัตว์","น.สพ. วิชัย สุขสันต์","สพ.ญ. ทั่วไป"])
+            client_name = ap5.text_input("ชื่อเจ้าของสัตว์")
+            pet_name    = ap6.text_input("ชื่อสัตว์")
+
+            ap7, ap8, ap9 = st.columns(3)
+            pet_type    = ap7.selectbox("ประเภทสัตว์", ["สุนัข","แมว","กระต่าย","นก","สัตว์อื่นๆ"])
+            service     = ap8.selectbox("บริการ", ["ตรวจโรคทั่วไป","ผ่าตัด","ฉีดวัคซีน","อาบน้ำ-ตัดขน","เอกซเรย์","อื่นๆ"])
+            appt_status = ap9.selectbox("สถานะ", APPT_STATUSES)
+
+            note_a = st.text_input("หมายเหตุ", placeholder="ข้อมูลเพิ่มเติม (ไม่บังคับ)")
+
+            if st.form_submit_button("💾 บันทึกนัดหมาย", use_container_width=True):
+                if not client_name.strip():
+                    st.error("กรุณากรอกชื่อเจ้าของสัตว์")
+                elif start_time is None or end_time is None:
+                    st.error("กรุณาเลือกเวลาเริ่มและเวลาสิ้นสุด")
+                else:
+                    insert_appointment({
+                        "appt_date":    appt_date.isoformat(),
+                        "start_time":   start_time.strftime("%H:%M"),
+                        "end_time":     end_time.strftime("%H:%M"),
+                        "vet_name":     vet_name,
+                        "client_name":  client_name.strip(),
+                        "pet_name":     pet_name.strip() or None,
+                        "pet_type":     pet_type,
+                        "service_type": service,
+                        "status":       appt_status,
+                        "note":         note_a.strip() or None,
+                        "created_at":   date.today().isoformat(),
+                    })
+                    st.success("✅ บันทึกนัดหมายเรียบร้อย!")
+                    st.cache_data.clear()
+                    st.rerun()
+
+    # ── All appointments table ────────────────────────────────────────────────
+    st.divider()
+    st.markdown("## 📋 รายการนัดหมายทั้งหมด")
+    if not df_appt.empty:
+        show_appt = df_appt[["id","appt_date","start_time","end_time","vet_name",
+                              "client_name","pet_name","pet_type","service_type","status","note"]].copy()
+        show_appt.columns = ["ID","วันที่","เริ่ม","สิ้นสุด","สัตวแพทย์",
+                             "เจ้าของ","สัตว์","ประเภท","บริการ","สถานะ","หมายเหตุ"]
+        st.dataframe(show_appt, use_container_width=True, height=400, hide_index=True)
+        st.caption(f"ทั้งหมด {len(df_appt):,} รายการ")
+    else:
+        st.info("ยังไม่มีนัดหมาย")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE 4 — CLIENTS & PETS
+# ═══════════════════════════════════════════════════════════════════════════════
+elif page == "👥  ลูกค้า & สัตว์":
+    st.title("👥 ลูกค้า & สัตว์")
+
+    df_cx = load_data()
+    df_inc_cx = df_cx[df_cx["transaction_type"]=="รายรับ"].copy()
+
+    # KPIs
+    total_owners = df_inc_cx["client_name"].nunique()
+    total_pets   = df_inc_cx["pet_name"].dropna().nunique()
+    avg_spend    = df_inc_cx.groupby("client_name")["net_amount"].sum().mean() if total_owners > 0 else 0
+
+    k1, k2, k3 = st.columns(3)
+    kpi(k1, "👥", "จำนวนเจ้าของสัตว์ทั้งหมด", f"{total_owners:,} ราย", accent="#7C3AED")
+    kpi(k2, "🐾", "จำนวนสัตว์",               f"{total_pets:,} ตัว",   accent="#10B981")
+    kpi(k3, "💰", "เฉลี่ยค่าใช้จ่ายต่อเจ้าของ", fmt_thb(avg_spend),   accent="#3B82F6")
+
+    st.divider()
+
+    # Client summary table
+    st.markdown("## 📋 สรุปข้อมูลเจ้าของสัตว์")
+    if not df_inc_cx.empty:
+        client_grp = df_inc_cx.groupby("client_name").agg(
+            จำนวนครั้ง=("id", "count"),
+            ยอดรวม=("net_amount", "sum"),
+            ครั้งล่าสุด=("transaction_date", "max"),
+            สัตว์=("pet_name", lambda x: ", ".join(x.dropna().unique()[:3])),
+        ).reset_index().sort_values("ยอดรวม", ascending=False)
+        client_grp["ครั้งล่าสุด"] = client_grp["ครั้งล่าสุด"].dt.strftime("%Y-%m-%d")
+        client_grp["ยอดรวม"] = client_grp["ยอดรวม"].map(lambda v: f"฿{v:,.0f}")
+        client_grp.columns = ["ชื่อเจ้าของ","จำนวนครั้ง","ยอดรวม","ล่าสุด","สัตว์"]
+
+        srch_cx = st.text_input("🔍 ค้นหาชื่อเจ้าของ")
+        if srch_cx:
+            client_grp = client_grp[client_grp["ชื่อเจ้าของ"].str.contains(srch_cx, case=False, na=False)]
+
+        st.dataframe(client_grp, use_container_width=True, height=420, hide_index=True)
+        st.caption(f"แสดง {len(client_grp):,} ราย")
+
+        st.divider()
+
+        # Top 10 clients by spending
+        st.markdown("## 📊 Top 10 เจ้าของสัตว์ตามยอดใช้จ่าย")
+        top10_cx = df_inc_cx.groupby("client_name")["net_amount"].sum().reset_index()
+        top10_cx = top10_cx.sort_values("net_amount", ascending=True).tail(10)
+
+        fig_cx = go.Figure(go.Bar(
+            x=top10_cx["net_amount"],
+            y=top10_cx["client_name"],
+            orientation="h",
+            marker=dict(
+                color=top10_cx["net_amount"],
+                colorscale=[[0, "#DDD6FE"], [1, "#7C3AED"]],
+                line_width=0,
+            ),
+            hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<extra></extra>",
+            text=top10_cx["net_amount"].map(lambda v: f"฿{v:,.0f}"),
+            textposition="outside",
+        ))
+        fig_cx.update_layout(**CHART_BG, height=380, showlegend=False,
+                             coloraxis_showscale=False)
+        st.plotly_chart(fig_cx, use_container_width=True)
+    else:
+        st.info("ยังไม่มีข้อมูลรายรับ")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE 5 — STOCK
 # ═══════════════════════════════════════════════════════════════════════════════
 elif page == "💊  คลังยา & สินค้า":
     st.title("💊 คลังยา & สินค้า")
@@ -790,29 +1298,29 @@ elif page == "💊  คลังยา & สินค้า":
             inv_val = (df_si["qty"] * df_si["avg_cost"].fillna(0)).sum()
             ok  = len(df_si) - low - out
 
-            k1,k2,k3,k4 = st.columns(4)
-            kpi(k1,"📦","รายการทั้งหมด", f"{len(df_si):,} รายการ")
-            kpi(k2,"✅","ปกติ",         f"{ok:,} รายการ")
-            kpi(k3,"⚠️","ใกล้หมด",     f"{low} รายการ",   note="QTY ≤ alert")
-            kpi(k4,"🚨","หมดสต๊อก",    f"{out} รายการ",   note="QTY ≤ 0")
+            k1, k2, k3, k4 = st.columns(4)
+            kpi(k1, "📦", "รายการทั้งหมด", f"{len(df_si):,} รายการ")
+            kpi(k2, "✅", "ปกติ",          f"{ok:,} รายการ")
+            kpi(k3, "⚠️", "ใกล้หมด",      f"{low} รายการ",   note="QTY ≤ alert")
+            kpi(k4, "🚨", "หมดสต๊อก",     f"{out} รายการ",   note="QTY ≤ 0")
             st.divider()
 
-            fa,fb,fc_,fd = st.columns(4)
+            fa, fb, fc_, fd = st.columns(4)
             drug_types = ["ทั้งหมด"] + sorted(df_si["drug_type"].dropna().unique().tolist())
-            sel_d  = fa.selectbox("ประเภทยา", drug_types)
-            sel_al = fb.selectbox("กรองสถานะ", ["ทั้งหมด","✅ ปกติ","⚠️ ใกล้หมด","🚨 หมดสต๊อก"])
-            srch_s = fc_.text_input("🔍 ค้นหาชื่อสินค้า")
-            sel_sup = fd.selectbox("ผู้จำหน่าย", ["ทั้งหมด"] + sorted(df_si["supplier"].dropna().replace("","ไม่ระบุ").unique().tolist()))
+            sel_d   = fa.selectbox("ประเภทยา", drug_types)
+            sel_al  = fb.selectbox("กรองสถานะ", ["ทั้งหมด","✅ ปกติ","⚠️ ใกล้หมด","🚨 หมดสต๊อก"])
+            srch_s  = fc_.text_input("🔍 ค้นหาชื่อสินค้า")
+            sel_sup = fd.selectbox("ผู้จำหน่าย",
+                                   ["ทั้งหมด"] + sorted(df_si["supplier"].dropna().replace("","ไม่ระบุ").unique().tolist()))
 
             dsi = df_si.copy()
             if sel_d  != "ทั้งหมด": dsi = dsi[dsi["drug_type"]==sel_d]
             if sel_al == "⚠️ ใกล้หมด":   dsi = dsi[(dsi["qty"] <= dsi["alert_qty"]) & (dsi["qty"] > 0)]
             if sel_al == "🚨 หมดสต๊อก":  dsi = dsi[dsi["qty"] <= 0]
             if sel_al == "✅ ปกติ":       dsi = dsi[dsi["qty"] > dsi["alert_qty"]]
-            if srch_s: dsi = dsi[dsi["stock_name"].str.contains(srch_s,case=False,na=False)]
+            if srch_s: dsi = dsi[dsi["stock_name"].str.contains(srch_s, case=False, na=False)]
             if sel_sup != "ทั้งหมด": dsi = dsi[dsi["supplier"].fillna("ไม่ระบุ")==sel_sup]
 
-            # Add status column
             def stock_status(row):
                 if row["qty"] <= 0:            return "🚨 หมด"
                 if row["qty"] <= row["alert_qty"]: return "⚠️ ใกล้หมด"
@@ -829,11 +1337,11 @@ elif page == "💊  คลังยา & สินค้า":
             st.caption("คลิกที่แท่งเพื่อดูประวัติรับสินค้า")
             df_val = df_si.copy()
             df_val["มูลค่า"] = df_val["qty"] * df_val["avg_cost"].fillna(0)
-            top10 = df_val[df_val["มูลค่า"] > 0].nlargest(10,"มูลค่า")
+            top10 = df_val[df_val["มูลค่า"] > 0].nlargest(10, "มูลค่า")
             fig_stk = go.Figure(go.Bar(
                 x=top10["มูลค่า"], y=top10["stock_name"], orientation="h",
-                marker=dict(color=top10["มูลค่า"], colorscale=[[0,"#DBEAFE"],[1,"#1D4ED8"]],
-                             line_width=0),
+                marker=dict(color=top10["มูลค่า"],
+                             colorscale=[[0,"#DBEAFE"],[1,"#1D4ED8"]], line_width=0),
                 hovertemplate="<b>%{y}</b><br>มูลค่า: ฿%{x:,.0f}<extra></extra>",
             ))
             fig_stk.update_layout(**CHART_BG, height=360, coloraxis_showscale=False)
@@ -842,32 +1350,32 @@ elif page == "💊  คลังยา & สินค้า":
             pts_stk = ev_stk.selection.points if ev_stk.selection else []
             if pts_stk:
                 pt_s = pts_stk[0]
-                yv   = pt_s.get("y") if isinstance(pt_s,dict) else getattr(pt_s,"y",None)
+                yv   = pt_s.get("y") if isinstance(pt_s, dict) else getattr(pt_s, "y", None)
                 if yv: st.session_state.drill_stock = yv
 
             if st.session_state.drill_stock:
                 drill_badge(st.session_state.drill_stock, "stock")
 
     with tab2:
-        df_inc = load_stock_incoming()
-        if df_inc.empty:
+        df_inc2 = load_stock_incoming()
+        if df_inc2.empty:
             st.info("ยังไม่มีข้อมูล กรุณานำเข้าที่แท็บ 'นำเข้าข้อมูล'")
         else:
-            i1,i2,i3 = st.columns(3)
-            kpi(i1,"📋","รายการรับทั้งหมด", f"{len(df_inc):,}")
-            kpi(i2,"💰","มูลค่ารับรวม", fmt_thb(df_inc["total_amount"].sum()))
-            kpi(i3,"🏪","ผู้จำหน่าย", f"{df_inc['supplier'].nunique()} ราย")
+            i1, i2, i3 = st.columns(3)
+            kpi(i1, "📋", "รายการรับทั้งหมด", f"{len(df_inc2):,}")
+            kpi(i2, "💰", "มูลค่ารับรวม",    fmt_thb(df_inc2["total_amount"].sum()))
+            kpi(i3, "🏪", "ผู้จำหน่าย",      f"{df_inc2['supplier'].nunique()} ราย")
             st.divider()
 
-            si1,si2 = st.columns(2)
-            srch_i  = si1.text_input("🔍 ค้นหาสินค้า / เลขที่เอกสาร",
+            si1, si2 = st.columns(2)
+            srch_i   = si1.text_input("🔍 ค้นหาสินค้า / เลขที่เอกสาร",
                                       value=st.session_state.drill_stock or "")
             sel_sup2 = si2.selectbox("ผู้จำหน่าย",
-                                      ["ทั้งหมด"] + sorted(df_inc["supplier"].dropna().unique().tolist()))
+                                      ["ทั้งหมด"] + sorted(df_inc2["supplier"].dropna().unique().tolist()))
 
-            di2 = df_inc.copy()
-            if srch_i:  di2 = di2[di2["stock_name"].str.contains(srch_i,case=False,na=False) |
-                                   di2["doc_number"].str.contains(srch_i,case=False,na=False)]
+            di2 = df_inc2.copy()
+            if srch_i:  di2 = di2[di2["stock_name"].str.contains(srch_i, case=False, na=False) |
+                                   di2["doc_number"].str.contains(srch_i, case=False, na=False)]
             if sel_sup2 != "ทั้งหมด": di2 = di2[di2["supplier"]==sel_sup2]
 
             show_i = di2[["receive_date","doc_number","stock_id","stock_name",
@@ -875,12 +1383,11 @@ elif page == "💊  คลังยา & สินค้า":
             show_i.columns = ["วันที่รับ","เลขที่เอกสาร","รหัสสินค้า","ชื่อสินค้า",
                                "ผู้จำหน่าย","จำนวน","หน่วย","ราคา/หน่วย","รวมเงิน","วันหมดอายุ","ผู้ทำรายการ"]
             st.dataframe(show_i, use_container_width=True, height=420, hide_index=True)
-            st.caption(f"แสดง {len(di2):,} จาก {len(df_inc):,} รายการ")
+            st.caption(f"แสดง {len(di2):,} จาก {len(df_inc2):,} รายการ")
 
-            # Incoming by supplier chart
             st.markdown("## 🏪 มูลค่ารับตามผู้จำหน่าย")
-            supp_val = df_inc.groupby("supplier")["total_amount"].sum().reset_index()
-            supp_val = supp_val.sort_values("total_amount",ascending=False).head(8)
+            supp_val = df_inc2.groupby("supplier")["total_amount"].sum().reset_index()
+            supp_val = supp_val.sort_values("total_amount", ascending=False).head(8)
             fig_sup = go.Figure(go.Bar(
                 x=supp_val["supplier"], y=supp_val["total_amount"],
                 marker=dict(color=supp_val["total_amount"],
@@ -931,11 +1438,12 @@ elif page == "💊  คลังยา & สินค้า":
         if not df_si2.empty:
             st.download_button("⬇️ Export สต๊อก CSV",
                                data=df_si2.to_csv(index=False).encode("utf-8-sig"),
-                               file_name="stock_items.csv", mime="text/csv")
+                               file_name="stock_items.csv",
+                               mime="text/csv")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PAGE 4 — FINANCIAL REPORT
+# PAGE 6 — FINANCIAL REPORT
 # ═══════════════════════════════════════════════════════════════════════════════
 elif page == "📄  รายงานการเงิน":
     st.title("📄 รายงานทางการเงิน")
@@ -947,7 +1455,8 @@ elif page == "📄  รายงานการเงิน":
     if up_pdf:
         pdf_bytes = up_pdf.read(); pdf_name = up_pdf.name
     elif os.path.exists(default_pdf):
-        with open(default_pdf,"rb") as f: pdf_bytes = f.read()
+        with open(default_pdf, "rb") as f:
+            pdf_bytes = f.read()
         pdf_name = "รายงานทางการเงิน.pdf"
         st.info(f"📂 โหลดไฟล์อัตโนมัติ: **{pdf_name}**")
 
@@ -958,13 +1467,12 @@ elif page == "📄  รายงานการเงิน":
     with st.spinner("กำลังวิเคราะห์ PDF..."):
         info, summary_df, items_df = parse_pdf(pdf_bytes)
 
-    # ── KPI row from PDF ───────────────────────────────────────────────────────
-    k1,k2,k3,k4,k5 = st.columns(5)
-    kpi(k1,"💰","รายรับรวม (ไม่รวมมัดจำ)", fmt_thb(summary_df["amount"].sum() if not summary_df.empty else 0))
-    kpi(k2,"💵","ชำระด้วยเงินสด",          fmt_thb(info.get("cash",0)))
-    kpi(k3,"📲","ชำระด้วยการโอน",           fmt_thb(info.get("transfer",0)))
-    kpi(k4,"🧾","ใบเสร็จทั้งหมด",           f"{info.get('receipts',0):,} ใบ")
-    kpi(k5,"❌","ใบเสร็จยกเลิก",           f"{info.get('cancelled',0):,} ใบ")
+    k1, k2, k3, k4, k5 = st.columns(5)
+    kpi(k1, "💰", "รายรับรวม (ไม่รวมมัดจำ)", fmt_thb(summary_df["amount"].sum() if not summary_df.empty else 0))
+    kpi(k2, "💵", "ชำระด้วยเงินสด",           fmt_thb(info.get("cash", 0)))
+    kpi(k3, "📲", "ชำระด้วยการโอน",            fmt_thb(info.get("transfer", 0)))
+    kpi(k4, "🧾", "ใบเสร็จทั้งหมด",            f"{info.get('receipts',0):,} ใบ")
+    kpi(k5, "❌", "ใบเสร็จยกเลิก",            f"{info.get('cancelled',0):,} ใบ")
     st.divider()
 
     view_tab, raw_tab = st.tabs(["📊 วิเคราะห์ข้อมูล", "📃 ดู PDF ต้นฉบับ"])
@@ -973,11 +1481,10 @@ elif page == "📄  รายงานการเงิน":
         if summary_df.empty:
             st.warning("ไม่พบข้อมูลสรุปรายได้ในไฟล์นี้")
         else:
-            # Assign colors
             summary_df["color"] = summary_df["category"].map(lambda c: color_for(c))
             summary_df = summary_df.sort_values("amount", ascending=False)
 
-            ch1, ch2 = st.columns([2,1])
+            ch1, ch2 = st.columns([2, 1])
             with ch1:
                 st.markdown("## 💰 รายรับแยกตามหมวดหมู่")
                 st.caption("คลิกที่แท่งเพื่อ drilldown รายการสินค้า")
@@ -986,7 +1493,8 @@ elif page == "📄  รายงานการเงิน":
                     marker=dict(color=summary_df["color"].tolist(), line_width=0),
                     hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
                     text=summary_df["amount"].map(lambda v: fmt_thb(v)),
-                    textposition="outside", textfont=dict(size=11, color="#A8D5BF"),
+                    textposition="outside",
+                    textfont=dict(size=11, color="#A8D5BF"),
                 ))
                 fig_sum.update_layout(**CHART_BG, height=340)
                 ev_sum = st.plotly_chart(fig_sum, key="bar_pdf_cat", on_select="rerun",
@@ -994,49 +1502,55 @@ elif page == "📄  รายงานการเงิน":
                 pts_sum = ev_sum.selection.points if ev_sum.selection else []
                 if pts_sum:
                     pt_s2 = pts_sum[0]
-                    xv    = pt_s2.get("x") if isinstance(pt_s2,dict) else getattr(pt_s2,"x",None)
+                    xv    = pt_s2.get("x") if isinstance(pt_s2, dict) else getattr(pt_s2, "x", None)
                     if xv: st.session_state.drill_pdf_cat = xv
 
             with ch2:
                 st.markdown("## 🥧 สัดส่วนรายรับ")
                 fig_p = go.Figure(go.Pie(
-                    labels=summary_df["category"], values=summary_df["amount"],
+                    labels=summary_df["category"],
+                    values=summary_df["amount"],
                     hole=0.5,
                     marker_colors=summary_df["color"].tolist(),
-                    textposition="inside", textinfo="percent",
+                    textposition="inside",
+                    textinfo="percent",
                     hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>%{percent}<extra></extra>",
                 ))
-                fig_p.update_layout(**{**CHART_BG, "margin": dict(t=10,b=10,l=10,r=10)},
-                                     height=340, showlegend=True, legend=LEGEND_STYLE)
+                fig_p.update_layout(
+                    **CHART_BG,
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    height=340,
+                    showlegend=True,
+                    legend=LEGEND_STYLE,
+                )
                 ev_p2 = st.plotly_chart(fig_p, key="pie_pdf", on_select="rerun",
                                         use_container_width=True)
                 pts_p2 = ev_p2.selection.points if ev_p2.selection else []
                 if pts_p2:
                     pt_p2 = pts_p2[0]
-                    lbl2  = pt_p2.get("label") if isinstance(pt_p2,dict) else getattr(pt_p2,"label",None)
+                    lbl2  = pt_p2.get("label") if isinstance(pt_p2, dict) else getattr(pt_p2, "label", None)
                     if not lbl2:
-                        lbl2 = pt_p2.get("x") if isinstance(pt_p2,dict) else getattr(pt_p2,"x",None)
+                        lbl2 = pt_p2.get("x") if isinstance(pt_p2, dict) else getattr(pt_p2, "x", None)
                     if lbl2: st.session_state.drill_pdf_cat = lbl2
 
-            # Payment method chart
             st.divider()
             st.markdown("## 💳 ช่องทางการชำระเงิน")
             pay_df = pd.DataFrame([
-                {"method":"เงินสด",             "amount": info.get("cash",0),     "color":"#4ADE80"},
-                {"method":"โอนเงินผ่านบัญชี",    "amount": info.get("transfer",0), "color":"#38BDF8"},
+                {"method": "เงินสด",           "amount": info.get("cash", 0),     "color": "#10B981"},
+                {"method": "โอนเงินผ่านบัญชี",  "amount": info.get("transfer", 0), "color": "#3B82F6"},
             ])
             fig_pay = go.Figure(go.Bar(
                 x=pay_df["method"], y=pay_df["amount"],
                 marker=dict(color=pay_df["color"].tolist(), line_width=0),
                 text=pay_df["amount"].map(lambda v: fmt_thb(v)),
-                textposition="outside", textfont=dict(size=13, color="#E2F5EB"),
+                textposition="outside",
+                textfont=dict(size=13, color="#E2F5EB"),
                 hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
                 width=[0.4, 0.4],
             ))
             fig_pay.update_layout(**CHART_BG, height=260)
             st.plotly_chart(fig_pay, use_container_width=True)
 
-            # ── Drilldown items table ────────────────────────────────────────
             if not items_df.empty:
                 st.divider()
                 items_filtered = items_df.copy()
@@ -1055,9 +1569,8 @@ elif page == "📄  รายงานการเงิน":
                 st.markdown(title)
 
                 if not items_filtered.empty:
-                    # Top items chart
                     top_items = items_filtered.groupby("item_name")["total"].sum().reset_index()
-                    top_items = top_items.sort_values("total",ascending=False).head(15)
+                    top_items = top_items.sort_values("total", ascending=False).head(15)
 
                     fig_ti = go.Figure(go.Bar(
                         x=top_items["total"], y=top_items["item_name"],
@@ -1065,17 +1578,17 @@ elif page == "📄  รายงานการเงิน":
                         marker=dict(
                             color=top_items["total"],
                             colorscale=[[0,"#DBEAFE"],[0.5,"#3B82F6"],[1,"#1D4ED8"]],
-                            line_width=0
+                            line_width=0,
                         ),
                         hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<extra></extra>",
                     ))
-                    fig_ti.update_layout(**CHART_BG, height=max(300, len(top_items)*28),
-                                          coloraxis_showscale=False)
+                    fig_ti.update_layout(**CHART_BG,
+                                         height=max(300, len(top_items)*28),
+                                         coloraxis_showscale=False)
                     st.plotly_chart(fig_ti, use_container_width=True)
 
-                    # Full table
                     disp_items = items_filtered[["category","item_name","qty","unit","total"]].copy()
-                    disp_items = disp_items.sort_values("total",ascending=False)
+                    disp_items = disp_items.sort_values("total", ascending=False)
                     disp_items.columns = ["หมวด","ชื่อสินค้า/บริการ","จำนวนขาย","หน่วย","ยอดรวม (฿)"]
                     st.dataframe(disp_items, use_container_width=True, height=400, hide_index=True)
                     st.caption(f"แสดง {len(items_filtered):,} รายการ  •  รวม ฿{items_filtered['total'].sum():,.0f}")
@@ -1086,7 +1599,7 @@ elif page == "📄  รายงานการเงิน":
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             total_pg = len(pdf.pages)
             st.markdown(f"**{pdf_name}** &nbsp;•&nbsp; {total_pg} หน้า")
-            pc1,pc2,_ = st.columns([1,1,4])
+            pc1, pc2, _ = st.columns([1, 1, 4])
             pg_from = pc1.number_input("หน้าเริ่ม", 1, total_pg, 1)
             pg_to   = pc2.number_input("หน้าสุดท้าย", 1, total_pg, min(5, total_pg))
 

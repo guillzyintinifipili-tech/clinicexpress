@@ -83,6 +83,24 @@ def init_db():
         )
     """)
 
+    # ── Appointments ────────────────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appt_date TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            vet_name TEXT DEFAULT 'สพ.ญ. ทั่วไป',
+            client_name TEXT NOT NULL,
+            pet_name TEXT,
+            pet_type TEXT DEFAULT 'สุนัข',
+            service_type TEXT,
+            status TEXT DEFAULT 'Available',
+            note TEXT,
+            created_at TEXT
+        )
+    """)
+
     con.commit()
 
     # Seed transactions if empty
@@ -90,6 +108,13 @@ def init_db():
     if count == 0:
         _seed_dummy_data(cur)
         con.commit()
+
+    # Seed appointments if empty
+    appt_count = cur.execute("SELECT COUNT(*) FROM appointments").fetchone()[0]
+    if appt_count == 0:
+        _seed_appointments(cur)
+        con.commit()
+
     con.close()
 
     # Auto-import XLS files if they exist (runs once when DB is fresh)
@@ -188,6 +213,67 @@ def _seed_dummy_data(cur):
         INSERT INTO transactions
             (transaction_date, transaction_type, category, client_name, pet_name,
              amount, tax_deduction, net_amount, payment_status, note, receipt_file_path)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    """, rows)
+
+
+def _seed_appointments(cur):
+    """Seed 18 appointments for April 2026."""
+    now = date.today().isoformat()
+    vets = ["สพ.ญ. มาลี ใจดี", "สพ.ญ. สุดา รักสัตว์", "น.สพ. วิชัย สุขสันต์"]
+    services = ["ตรวจโรคทั่วไป", "ผ่าตัด", "ฉีดวัคซีน", "อาบน้ำ-ตัดขน", "เอกซเรย์"]
+    statuses = ["Available", "Available", "Booked", "Booked", "Booked", "Consult Only"]
+    pet_types = ["สุนัข", "สุนัข", "แมว", "แมว", "กระต่าย"]
+    clients_pets = [
+        ("คุณสมชาย ใจดี",  "ดาวเรือง",   "สุนัข"),
+        ("คุณนภา รักสัตว์", "มะหมา",     "สุนัข"),
+        ("คุณวิชัย สุขสันต์","เหมียว",    "แมว"),
+        ("คุณปรียา มีทรัพย์","บัตเตอร์",  "แมว"),
+        ("คุณอานนท์ แจ่มใส", "โกลดี้",   "สุนัข"),
+        ("คุณมาลี ชื่นบาน",  "ช็อกโกแลต","สุนัข"),
+        ("คุณธนา ยิ้มแย้ม",  "แพนด้า",   "กระต่าย"),
+        ("คุณสุดา พรมดี",   "น้องแมว",   "แมว"),
+        ("คุณกิตติ วงศ์สุข", "รัสตี้",   "สุนัข"),
+        ("คุณอรอุมา ทองงาม", "มิ้ว",     "แมว"),
+        ("คุณบุญมี ศรีสุข",  "หมูหน้าขาว","สุนัข"),
+        ("คุณเพ็ญศรี ทองดี", "ลูกพีช",   "แมว"),
+    ]
+
+    appt_data = [
+        # (day, start, end, vet_idx, client_idx, service_idx, status_idx)
+        (1,  "09:00", "09:30", 0, 0,  0, 2),
+        (2,  "10:00", "11:00", 1, 1,  1, 3),
+        (3,  "08:30", "09:00", 2, 2,  2, 2),
+        (4,  "13:00", "13:30", 0, 3,  3, 5),
+        (5,  "14:00", "15:00", 1, 4,  0, 4),
+        (7,  "09:30", "10:00", 2, 5,  2, 2),
+        (8,  "11:00", "12:00", 0, 6,  1, 3),
+        (9,  "08:00", "08:30", 1, 7,  4, 0),
+        (10, "15:00", "15:30", 2, 8,  0, 1),
+        (11, "10:30", "11:30", 0, 9,  3, 2),
+        (12, "09:00", "09:30", 1, 10, 2, 0),
+        (14, "13:30", "14:00", 2, 11, 0, 1),
+        (15, "08:30", "09:30", 0, 0,  1, 3),
+        (16, "10:00", "10:30", 1, 2,  4, 5),
+        (17, "14:00", "14:30", 2, 4,  2, 2),
+        (19, "09:00", "10:00", 0, 6,  0, 4),
+        (21, "11:00", "11:30", 1, 8,  3, 2),
+        (23, "13:00", "14:00", 2, 10, 1, 3),
+    ]
+
+    rows = []
+    for day, start, end, vi, ci, si, sti in appt_data:
+        appt_date = f"2026-04-{day:02d}"
+        vet = vets[vi]
+        client, pet, pet_type = clients_pets[ci]
+        service = services[si]
+        status = statuses[sti]
+        rows.append((appt_date, start, end, vet, client, pet, pet_type, service, status, None, now))
+
+    cur.executemany("""
+        INSERT INTO appointments
+            (appt_date, start_time, end_time, vet_name, client_name, pet_name,
+             pet_type, service_type, status, note, created_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?)
     """, rows)
 
@@ -322,6 +408,34 @@ def fetch_stock_incoming() -> pd.DataFrame:
     df = pd.read_sql_query("SELECT * FROM stock_incoming ORDER BY receive_date DESC", con)
     con.close()
     return df
+
+
+# ── Appointments CRUD ─────────────────────────────────────────────────────────
+def insert_appointment(row: dict):
+    con = get_connection()
+    con.execute("""
+        INSERT INTO appointments
+            (appt_date, start_time, end_time, vet_name, client_name, pet_name,
+             pet_type, service_type, status, note, created_at)
+        VALUES (:appt_date,:start_time,:end_time,:vet_name,:client_name,:pet_name,
+                :pet_type,:service_type,:status,:note,:created_at)
+    """, row)
+    con.commit()
+    con.close()
+
+
+def fetch_appointments() -> pd.DataFrame:
+    con = get_connection()
+    df = pd.read_sql_query("SELECT * FROM appointments ORDER BY appt_date, start_time", con)
+    con.close()
+    return df
+
+
+def delete_appointment(appt_id: int):
+    con = get_connection()
+    con.execute("DELETE FROM appointments WHERE id = ?", (appt_id,))
+    con.commit()
+    con.close()
 
 
 def _to_float(v):
