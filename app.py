@@ -79,8 +79,15 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"],
 [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stBlock"],
 [data-testid="stVerticalBlockBorderWrapper"] .element-container,
-[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] {
-    background: transparent !important;
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"],
+[data-testid="stVerticalBlockBorderWrapper"] .stVerticalBlock,
+[data-testid="stVerticalBlockBorderWrapper"] .stHorizontalBlock,
+[data-testid="stVerticalBlockBorderWrapper"] .block-container,
+[data-testid="stVerticalBlockBorderWrapper"] section {
+    background: #FFFFFF !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"] iframe {
+    background: #FFFFFF !important;
 }
 [data-testid="stVerticalBlockBorderWrapper"] h4 {
     color: #0F172A !important; font-size: 0.95rem !important; font-weight: 700 !important; margin-bottom: 2px !important;
