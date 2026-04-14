@@ -125,8 +125,8 @@ CAT_COLORS = {
 PET_EMOJI = {"สุนัข":"🐶","แมว":"🐱","กระต่าย":"🐰","นก":"🦜","ปลา":"🐟","แรคคูน":"🦝"}
 
 CHART_BG = dict(
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="#FFFFFF",
+    paper_bgcolor="#FFFFFF",
     font_color="#374151",
     font_family="Inter, sans-serif",
     xaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B", tickfont=dict(size=11)),
