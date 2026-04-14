@@ -74,6 +74,14 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
     padding: 4px 8px 8px !important;
 }
+[data-testid="stVerticalBlockBorderWrapper"] > div,
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlock"],
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"],
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stBlock"],
+[data-testid="stVerticalBlockBorderWrapper"] .element-container,
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdownContainer"] {
+    background: transparent !important;
+}
 [data-testid="stVerticalBlockBorderWrapper"] h4 {
     color: #0F172A !important; font-size: 0.95rem !important; font-weight: 700 !important; margin-bottom: 2px !important;
 }
