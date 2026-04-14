@@ -33,14 +33,25 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 [data-testid="stSidebar"] * { color: #334155 !important; }
 [data-testid="stSidebar"] hr { border-color: #E2E8F0 !important; }
 [data-testid="stSidebarNav"] { display: none; }
+/* ── Sidebar nav: hide radio circle, style as nav items ── */
+[data-testid="stSidebar"] div[role="radiogroup"] { gap: 2px; }
+[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child { display: none !important; }
 [data-testid="stSidebar"] div[role="radiogroup"] label {
-    border-radius: 10px !important; padding: 10px 14px !important;
-    margin-bottom: 4px !important; transition: all 0.15s;
-    font-size: 0.88rem !important; font-weight: 500 !important;
-    border: 1px solid #E2E8F0 !important; background: #F8FAFC !important; color: #475569 !important;
+    display: flex !important; align-items: center !important; cursor: pointer !important;
+    border-radius: 8px !important; padding: 11px 16px !important;
+    margin-bottom: 2px !important; transition: all 0.15s ease !important;
+    font-size: 0.9rem !important; font-weight: 500 !important;
+    color: #475569 !important; background: transparent !important;
+    border: none !important; border-left: 3px solid transparent !important;
+    width: 100% !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: #F8FAFC !important; color: #334155 !important;
+    border-left-color: #CBD5E1 !important;
 }
 [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-    background: #EDE9FE !important; border-color: #7C3AED !important; color: #5B21B6 !important;
+    background: #EDE9FE !important; border-left-color: #7C3AED !important;
+    color: #5B21B6 !important; font-weight: 700 !important;
 }
 [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid #E2E8F0; background: transparent; }
 [data-baseweb="tab"] {
@@ -55,6 +66,16 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 [data-testid="stExpander"] {
     border: 1px solid #E2E8F0 !important; border-radius: 12px !important;
     background: #FFFFFF !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #FFFFFF !important;
+    border-radius: 16px !important;
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    padding: 4px 8px 8px !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"] h4 {
+    color: #0F172A !important; font-size: 0.95rem !important; font-weight: 700 !important; margin-bottom: 2px !important;
 }
 .stButton > button {
     background: #F5F3FF !important; color: #7C3AED !important;
@@ -321,18 +342,24 @@ def section(title, caption=""):
 def no_data(msg="ยังไม่มีข้อมูลในช่วงที่เลือก"):
     st.info(f"📭 {msg}")
 
-def hbar(df, x_col, y_col, title="", colors=None, height=None, fmt=True):
+def hbar(df, x_col, y_col, title="", colors=None, height=None, fmt=True, total=None, key=None):
     if df.empty: return no_data()
     n = len(df)
-    h = height or max(280, n * 38)
+    h = height or max(280, n * 40)
     clrs = colors or [PALETTE[i % len(PALETTE)] for i in range(n)]
-    text = df[x_col].map(fmt_thb) if fmt else df[x_col].map(str)
+    total_val = total if total else df[x_col].sum()
+    pct_vals  = [(v / total_val * 100) if total_val > 0 else 0 for v in df[x_col]]
+    if fmt:
+        text = [f"{fmt_thb(v)}  ({p:.1f}%)" for v, p in zip(df[x_col], pct_vals)]
+    else:
+        text = df[x_col].map(str).tolist()
     fig = go.Figure(go.Bar(
         x=df[x_col], y=df[y_col], orientation="h",
         marker=dict(color=clrs, line_width=0),
         text=text, textposition="outside",
-        textfont=dict(size=11, color="#374151"),
-        hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<extra></extra>",
+        textfont=dict(size=10, color="#374151"),
+        customdata=pct_vals,
+        hovertemplate="<b>%{y}</b><br>฿%{x:,.0f}<br>สัดส่วน: <b>%{customdata:.1f}%</b><extra></extra>",
     ))
     fig.update_layout(**ch(
         height=h,
@@ -340,11 +367,13 @@ def hbar(df, x_col, y_col, title="", colors=None, height=None, fmt=True):
                    tickfont=dict(size=11), categoryorder="total ascending"),
         xaxis=dict(gridcolor="#E2E8F0", zeroline=False, color="#64748B",
                    tickfont=dict(size=10)),
-        margin=dict(t=8, b=8, l=8, r=80),
+        margin=dict(t=8, b=8, l=8, r=120),
         showlegend=False,
     ))
     if title: section(title)
-    st.plotly_chart(fig, use_container_width=True)
+    ev = st.plotly_chart(fig, use_container_width=True, on_select="rerun",
+                         selection_mode="points", key=key or f"hbar_{y_col}_{title}")
+    return ev
 
 def donut(labels, values, title="", colors=None, center_text=""):
     clrs = colors or [color_for(l) for l in labels]
@@ -353,7 +382,7 @@ def donut(labels, values, title="", colors=None, center_text=""):
         labels=labels, values=values, hole=0.58,
         marker=dict(colors=clrs, line=dict(color="#FFFFFF", width=2)),
         textposition="inside", textinfo="percent",
-        hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}  (%{percent})<extra></extra>",
+        hovertemplate="<b>%{label}</b><br>฿%{value:,.0f}<br>สัดส่วน: <b>%{percent}</b><extra></extra>",
         pull=[0]*len(labels),
     ))
     ann_text = center_text or fmt_thb(total)
@@ -456,100 +485,159 @@ if page == "📊 ภาพรวมธุรกิจ":
         receipts   = int(fp["receipts_count"].sum())
         cancelled  = int(fp["cancelled_count"].sum())
 
-        # KPI Row 1 – Financial
-        st.markdown("### 💰 สรุปการเงิน")
-        k1,k2,k3,k4 = st.columns(4)
-        kpi(k1,"รายรับรวม (ไม่รวมมัดจำ)",fmt_thb(total_rev), accent="#7C3AED")
-        kpi(k2,"ต้นทุนรวม",fmt_thb(total_cost), accent="#EF4444")
-        kpi(k3,"กำไรขั้นต้น",fmt_thb(gross_p), accent="#10B981")
-        kpi(k4,"อัตรากำไร",f"{margin_pct:.1f}%",
-            note=f"กำไร {fmt_thb(gross_p)} / รายรับ {fmt_thb(total_rev)}", accent="#F59E0B")
-
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-
-        # KPI Row 2 – Payment & Receipts
-        k5,k6,k7,k8 = st.columns(4)
-        kpi(k5,"ชำระด้วยเงินสด",fmt_thb(cash_v), accent="#3B82F6")
-        kpi(k6,"ชำระด้วยโอนเงิน",fmt_thb(transfer_v), accent="#06B6D4")
-        kpi(k7,"ใบเสร็จทั้งหมด",f"{receipts:,} ใบ", accent="#8B5CF6")
-        kpi(k8,"ใบเสร็จยกเลิก",f"{cancelled:,} ใบ",
-            note=f"{cancelled/receipts*100:.1f}% ของทั้งหมด" if receipts else "", accent="#94A3B8")
-
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-
-        # KPI Row 3 – Stock
+        # ── KPI Row – 5 essential metrics ─────────────────────────────────────
+        k1,k2,k3,k4,k5 = st.columns(5)
+        kpi(k1, "รายรับรวม", fmt_thb(total_rev), accent="#7C3AED")
+        kpi(k2, "กำไรขั้นต้น", fmt_thb(gross_p), accent="#10B981")
+        kpi(k3, "อัตรากำไร", f"{margin_pct:.1f}%", note="เป้าหมาย ≥ 50%", accent="#F59E0B")
+        kpi(k4, "ใบเสร็จทั้งหมด", f"{receipts:,} ใบ",
+            note=f"ยกเลิก {cancelled:,} ใบ", accent="#3B82F6")
         if not stk.empty:
-            inv_val = (stk["qty"] * stk["avg_cost"].fillna(0)).sum()
-            low_n   = int(((stk["qty"] <= stk["alert_qty"]) & (stk["qty"] > 0)).sum())
-            out_n   = int((stk["qty"] <= 0).sum())
-            ok_n    = len(stk) - low_n - out_n
-            k9,k10,k11,k12 = st.columns(4)
-            kpi(k9, "รายการสินค้า",f"{len(stk):,} รายการ", accent="#84CC16")
-            kpi(k10,"มูลค่าคลังสินค้า",fmt_thb(inv_val), accent="#10B981")
-            kpi(k11,"ใกล้หมดสต๊อก",f"{low_n} รายการ",
-                note="QTY ≤ ระดับแจ้งเตือน", accent="#F59E0B")
-            kpi(k12,"หมดสต๊อก",f"{out_n} รายการ",
-                note=f"ปกติ {ok_n} รายการ", accent="#EF4444")
+            inv_val_kpi = (stk["qty"] * stk["avg_cost"].fillna(0)).sum()
+            kpi(k5, "มูลค่าคลังสินค้า", fmt_thb(inv_val_kpi), accent="#84CC16")
+        else:
+            kpi(k5, "ต้นทุนรวม", fmt_thb(total_cost), accent="#EF4444")
 
-        st.divider()
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-        # Charts Row 1
+        # ── Row 1: Revenue by category + Donut ────────────────────────────────
         c1, c2 = st.columns([6, 4])
         with c1:
-            section("📊 รายรับแยกตามหมวดหมู่", "คลิกเพื่อดูรายละเอียด")
-            if not cats.empty:
-                cat_agg = cats.groupby("category")["amount"].sum().reset_index()
-                cat_agg = cat_agg.sort_values("amount", ascending=True)
-                clrs = [color_for(c) for c in cat_agg["category"]]
-                hbar(cat_agg, "amount", "category", colors=clrs)
-            else:
-                no_data()
+            with st.container(border=True):
+                st.markdown("#### 📊 รายรับแยกตามหมวดหมู่")
+                st.caption("คลิกที่แถบเพื่อ Drilldown รายละเอียด")
+                if not cats.empty:
+                    cat_agg = cats.groupby("category")["amount"].sum().reset_index()
+                    cat_agg = cat_agg.sort_values("amount", ascending=True)
+                    clrs = [color_for(c) for c in cat_agg["category"]]
+                    ev_cat = hbar(cat_agg, "amount", "category", colors=clrs,
+                                  total=cat_agg["amount"].sum(), key="overview_cat_bar")
+                    # Drilldown handler
+                    sel_cat = None
+                    if ev_cat and ev_cat.selection and ev_cat.selection.get("points"):
+                        sel_cat = ev_cat.selection["points"][0].get("y")
+                    if sel_cat and not itms.empty:
+                        sub = itms[itms["category"] == sel_cat]
+                        if not sub.empty:
+                            st.markdown(f'<div class="drill-badge">🔍 Drilldown: <strong>{sel_cat}</strong></div>', unsafe_allow_html=True)
+                            sub_agg = sub.groupby("item_name")["total"].sum().reset_index()
+                            sub_agg = sub_agg.sort_values("total", ascending=True)
+                            sub_total = sub_agg["total"].sum()
+                            vals_sub = sub_agg["total"].tolist()
+                            mx_sub = max(vals_sub) if vals_sub else 1
+                            c_sub = [color_for(sel_cat)] * len(sub_agg)
+                            hbar(sub_agg, "total", "item_name", colors=c_sub,
+                                 total=sub_total, key=f"drill_{sel_cat}")
+                else:
+                    no_data()
 
         with c2:
-            section("🍩 สัดส่วนรายรับ", "")
-            if not cats.empty:
-                cat_agg2 = cats.groupby("category")["amount"].sum().reset_index()
-                cat_agg2 = cat_agg2.sort_values("amount", ascending=False)
-                donut(cat_agg2["category"].tolist(), cat_agg2["amount"].tolist())
+            with st.container(border=True):
+                st.markdown("#### 🍩 สัดส่วนรายรับ")
+                if not cats.empty:
+                    cat_agg2 = cats.groupby("category")["amount"].sum().reset_index()
+                    cat_agg2 = cat_agg2.sort_values("amount", ascending=False)
+                    donut(cat_agg2["category"].tolist(), cat_agg2["amount"].tolist())
+                else:
+                    no_data()
+
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+        # ── Row 2: Payment method + Stock status ──────────────────────────────
+        c3, c4 = st.columns(2)
+        with c3:
+            with st.container(border=True):
+                st.markdown("#### 💳 ช่องทางการชำระเงิน")
+                if cash_v + transfer_v > 0:
+                    pay_pct_cash  = cash_v  / (cash_v + transfer_v) * 100
+                    pay_pct_trans = transfer_v / (cash_v + transfer_v) * 100
+                    pc1, pc2 = st.columns(2)
+                    pc1.markdown(f"""<div style="text-align:center;padding:12px;background:#F0FDF4;border-radius:10px;margin-bottom:8px">
+                        <div style="font-size:.70rem;color:#065F46;font-weight:700;text-transform:uppercase;letter-spacing:.05em">💵 เงินสด</div>
+                        <div style="font-size:1.2rem;font-weight:800;color:#10B981;margin:4px 0">{fmt_thb(cash_v)}</div>
+                        <div style="font-size:.8rem;color:#16A34A;font-weight:600">{pay_pct_cash:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                    pc2.markdown(f"""<div style="text-align:center;padding:12px;background:#EFF6FF;border-radius:10px;margin-bottom:8px">
+                        <div style="font-size:.70rem;color:#1E40AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em">📱 โอนเงิน</div>
+                        <div style="font-size:1.2rem;font-weight:800;color:#3B82F6;margin:4px 0">{fmt_thb(transfer_v)}</div>
+                        <div style="font-size:.8rem;color:#2563EB;font-weight:600">{pay_pct_trans:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                    donut(["เงินสด","โอนเงิน"], [cash_v, transfer_v],
+                          colors=["#10B981","#3B82F6"])
+                else:
+                    no_data()
+
+        with c4:
+            with st.container(border=True):
+                st.markdown("#### 📦 สถานะสต๊อกสินค้า")
+                if not stk.empty:
+                    low_n = int(((stk["qty"] <= stk["alert_qty"]) & (stk["qty"] > 0)).sum())
+                    out_n = int((stk["qty"] <= 0).sum())
+                    ok_n  = len(stk) - low_n - out_n
+                    ss1, ss2, ss3 = st.columns(3)
+                    ss1.markdown(f"""<div style="text-align:center;padding:12px 6px;background:#D1FAE5;border-radius:10px;margin-bottom:8px">
+                        <div style="font-size:.68rem;color:#065F46;font-weight:700">✅ ปกติ</div>
+                        <div style="font-size:1.6rem;font-weight:800;color:#059669;line-height:1.1">{ok_n}</div>
+                        <div style="font-size:.68rem;color:#065F46">รายการ</div>
+                    </div>""", unsafe_allow_html=True)
+                    ss2.markdown(f"""<div style="text-align:center;padding:12px 6px;background:#FEF3C7;border-radius:10px;margin-bottom:8px">
+                        <div style="font-size:.68rem;color:#92400E;font-weight:700">⚠️ ใกล้หมด</div>
+                        <div style="font-size:1.6rem;font-weight:800;color:#D97706;line-height:1.1">{low_n}</div>
+                        <div style="font-size:.68rem;color:#92400E">รายการ</div>
+                    </div>""", unsafe_allow_html=True)
+                    ss3.markdown(f"""<div style="text-align:center;padding:12px 6px;background:#FEE2E2;border-radius:10px;margin-bottom:8px">
+                        <div style="font-size:.68rem;color:#991B1B;font-weight:700">🔴 หมดสต๊อก</div>
+                        <div style="font-size:1.6rem;font-weight:800;color:#DC2626;line-height:1.1">{out_n}</div>
+                        <div style="font-size:.68rem;color:#991B1B">รายการ</div>
+                    </div>""", unsafe_allow_html=True)
+                    donut(["ปกติ","ใกล้หมด","หมดสต๊อก"], [ok_n, low_n, out_n],
+                          colors=["#10B981","#F59E0B","#EF4444"],
+                          center_text=f"{len(stk)} รายการ")
+                else:
+                    no_data("ยังไม่มีข้อมูลสต๊อก — นำเข้าที่หน้า 💊 คลังยา")
+
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+        # ── Trend chart (only if multiple periods) ────────────────────────────
+        if len(fp) > 1:
+            with st.container(border=True):
+                st.markdown("#### 📈 แนวโน้มรายรับแต่ละรอบ")
+                st.caption("เปรียบเทียบระหว่างรอบรายงาน")
+                fig_tr = go.Figure()
+                fig_tr.add_trace(go.Bar(
+                    x=fp["period_label"], y=fp["total_revenue"], name="รายรับ",
+                    marker=dict(color="#7C3AED", line_width=0, opacity=0.85),
+                    hovertemplate="<b>%{x}</b><br>รายรับ: ฿%{y:,.0f}<extra></extra>",
+                ))
+                fig_tr.add_trace(go.Scatter(
+                    x=fp["period_label"], y=fp["gross_profit"], name="กำไรขั้นต้น",
+                    mode="lines+markers+text",
+                    line=dict(color="#10B981", width=2.5),
+                    marker=dict(size=8, color="#10B981"),
+                    text=fp["gross_profit"].map(fmt_thb), textposition="top center",
+                    textfont=dict(size=10, color="#065F46"),
+                    hovertemplate="<b>%{x}</b><br>กำไร: ฿%{y:,.0f}<extra></extra>",
+                ))
+                fig_tr.update_layout(**ch(barmode="group", height=320, legend=LEGEND_STYLE,
+                                          margin=dict(t=24,b=24,l=16,r=16)))
+                st.plotly_chart(fig_tr, use_container_width=True)
+
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+        # ── Top 15 items ───────────────────────────────────────────────────────
+        with st.container(border=True):
+            st.markdown("#### 🏆 Top 15 สินค้า/บริการขายดีที่สุด")
+            st.caption("จากรายงานการเงินในช่วงที่เลือก")
+            if not itms.empty:
+                top15_all = itms.groupby("item_name")["total"].sum().reset_index()
+                top15 = top15_all.sort_values("total", ascending=True).tail(15)
+                vals  = top15["total"].tolist()
+                mx    = max(vals) if vals else 1
+                clrs  = [f"rgba(124,58,237,{0.35 + 0.65*(v/mx):.2f})" for v in vals]
+                hbar(top15, "total", "item_name", colors=clrs,
+                     total=top15_all["total"].sum(), key="overview_top15")
             else:
                 no_data()
-
-        st.divider()
-
-        # Trend chart – only if multiple periods
-        if len(fp) > 1:
-            section("📈 แนวโน้มรายรับแต่ละรอบ", "เปรียบเทียบระหว่างรอบรายงาน")
-            fig_tr = go.Figure()
-            fig_tr.add_trace(go.Bar(
-                x=fp["period_label"], y=fp["total_revenue"], name="รายรับ",
-                marker=dict(color="#7C3AED", line_width=0, opacity=0.85),
-                hovertemplate="<b>%{x}</b><br>รายรับ: ฿%{y:,.0f}<extra></extra>",
-            ))
-            fig_tr.add_trace(go.Scatter(
-                x=fp["period_label"], y=fp["gross_profit"], name="กำไรขั้นต้น",
-                mode="lines+markers+text",
-                line=dict(color="#10B981", width=2.5),
-                marker=dict(size=8, color="#10B981"),
-                text=fp["gross_profit"].map(fmt_thb), textposition="top center",
-                textfont=dict(size=10, color="#065F46"),
-                hovertemplate="<b>%{x}</b><br>กำไร: ฿%{y:,.0f}<extra></extra>",
-            ))
-            fig_tr.update_layout(**ch(barmode="group", height=320, legend=LEGEND_STYLE,
-                                      margin=dict(t=24,b=24,l=16,r=16)))
-            st.plotly_chart(fig_tr, use_container_width=True)
-            st.divider()
-
-        # Top 15 items
-        section("🏆 Top 15 สินค้า/บริการขายดีที่สุด", "จากรายงานการเงินในช่วงที่เลือก")
-        if not itms.empty:
-            top15 = itms.groupby("item_name")["total"].sum().reset_index()
-            top15 = top15.sort_values("total", ascending=True).tail(15)
-            vals  = top15["total"].tolist()
-            mx    = max(vals) if vals else 1
-            clrs  = [f"rgba(124,58,237,{0.35 + 0.65*(v/mx):.2f})" for v in vals]
-            hbar(top15, "total", "item_name", colors=clrs)
-        else:
-            no_data()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -585,111 +673,123 @@ elif page == "💰 กำไร-ขาดทุน":
 
     # Revenue vs Cost vs Profit per period
     if len(fp) >= 1:
-        section("📊 รายรับ vs ต้นทุน vs กำไร แต่ละรอบ", "")
-        fig_pnl = go.Figure()
-        fig_pnl.add_trace(go.Bar(name="รายรับ", x=fp["period_label"], y=fp["total_revenue"],
-                                  marker=dict(color="#7C3AED", line_width=0)))
-        fig_pnl.add_trace(go.Bar(name="ต้นทุน", x=fp["period_label"], y=fp["total_cost"],
-                                  marker=dict(color="#EF4444", line_width=0)))
-        fig_pnl.add_trace(go.Bar(name="กำไร",   x=fp["period_label"], y=fp["gross_profit"],
-                                  marker=dict(color="#10B981", line_width=0)))
-        fig_pnl.update_layout(**ch(barmode="group", height=360, legend=LEGEND_STYLE,
-                                    margin=dict(t=24,b=24,l=16,r=16)))
-        st.plotly_chart(fig_pnl, use_container_width=True)
-        st.divider()
+        with st.container(border=True):
+            st.markdown("#### 📊 รายรับ vs ต้นทุน vs กำไร แต่ละรอบ")
+            fig_pnl = go.Figure()
+            fig_pnl.add_trace(go.Bar(name="รายรับ", x=fp["period_label"], y=fp["total_revenue"],
+                                      marker=dict(color="#7C3AED", line_width=0)))
+            fig_pnl.add_trace(go.Bar(name="ต้นทุน", x=fp["period_label"], y=fp["total_cost"],
+                                      marker=dict(color="#EF4444", line_width=0)))
+            fig_pnl.add_trace(go.Bar(name="กำไร",   x=fp["period_label"], y=fp["gross_profit"],
+                                      marker=dict(color="#10B981", line_width=0)))
+            fig_pnl.update_layout(**ch(barmode="group", height=360, legend=LEGEND_STYLE,
+                                        margin=dict(t=24,b=24,l=16,r=16)))
+            st.plotly_chart(fig_pnl, use_container_width=True)
+
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # Margin trend
     if len(fp) > 1:
-        section("📉 อัตรากำไรขั้นต้น (%) แต่ละรอบ", "เส้นสีแดงคือค่าเฉลี่ย")
-        fp["margin_pct"] = (fp["gross_profit"] / fp["total_revenue"] * 100).round(1)
-        avg_mg = fp["margin_pct"].mean()
-        fig_mg = go.Figure()
-        fig_mg.add_trace(go.Scatter(
-            x=fp["period_label"], y=fp["margin_pct"],
-            mode="lines+markers+text", name="อัตรากำไร %",
-            fill="tozeroy", fillcolor="rgba(16,185,129,0.12)",
-            line=dict(color="#10B981", width=2.5, shape="spline"),
-            marker=dict(size=9, color="#10B981"),
-            text=fp["margin_pct"].map(lambda v: f"{v:.1f}%"),
-            textposition="top center", textfont=dict(size=11),
-        ))
-        fig_mg.add_hline(y=avg_mg, line_dash="dash", line_color="#EF4444",
-                          annotation_text=f"ค่าเฉลี่ย {avg_mg:.1f}%",
-                          annotation_position="bottom right")
-        fig_mg.update_layout(**ch(height=300, yaxis=dict(ticksuffix="%", gridcolor="#E2E8F0")))
-        st.plotly_chart(fig_mg, use_container_width=True)
-        st.divider()
+        with st.container(border=True):
+            st.markdown("#### 📉 อัตรากำไรขั้นต้น (%) แต่ละรอบ")
+            st.caption("เส้นสีแดงคือค่าเฉลี่ย")
+            fp["margin_pct"] = (fp["gross_profit"] / fp["total_revenue"] * 100).round(1)
+            avg_mg = fp["margin_pct"].mean()
+            fig_mg = go.Figure()
+            fig_mg.add_trace(go.Scatter(
+                x=fp["period_label"], y=fp["margin_pct"],
+                mode="lines+markers+text", name="อัตรากำไร %",
+                fill="tozeroy", fillcolor="rgba(16,185,129,0.12)",
+                line=dict(color="#10B981", width=2.5, shape="spline"),
+                marker=dict(size=9, color="#10B981"),
+                text=fp["margin_pct"].map(lambda v: f"{v:.1f}%"),
+                textposition="top center", textfont=dict(size=11),
+            ))
+            fig_mg.add_hline(y=avg_mg, line_dash="dash", line_color="#EF4444",
+                              annotation_text=f"ค่าเฉลี่ย {avg_mg:.1f}%",
+                              annotation_position="bottom right")
+            fig_mg.update_layout(**ch(height=300, yaxis=dict(ticksuffix="%", gridcolor="#E2E8F0")))
+            st.plotly_chart(fig_mg, use_container_width=True)
+
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # Categories: best & worst
     if not cats.empty:
-        cat_agg = cats.groupby("category")["amount"].sum().reset_index().sort_values("amount", ascending=False)
-        total_cat = cat_agg["amount"].sum()
-        cat_agg["pct"] = (cat_agg["amount"] / total_cat * 100).round(1)
+        with st.container(border=True):
+            st.markdown("#### 🏆 หมวดหมู่ที่ทำรายได้สูงสุด")
+            st.caption("สัดส่วนเทียบกับรายรับรวม")
+            cat_agg = cats.groupby("category")["amount"].sum().reset_index().sort_values("amount", ascending=False)
+            total_cat = cat_agg["amount"].sum()
+            cat_agg["pct"] = (cat_agg["amount"] / total_cat * 100).round(1)
+            top5 = cat_agg.head(5)
+            cols = st.columns(min(5, len(top5)))
+            for i, (_, row) in enumerate(top5.iterrows()):
+                with cols[i]:
+                    clr = color_for(row["category"])
+                    st.markdown(f"""
+                    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid {clr};
+                                border-radius:10px;padding:14px 16px;text-align:center;
+                                box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                      <p style="margin:0;font-size:.72rem;color:#64748B;font-weight:600">{row['category']}</p>
+                      <p style="margin:6px 0 2px;font-size:1.2rem;font-weight:700;color:#0F172A">{fmt_thb(row['amount'])}</p>
+                      <p style="margin:0;font-size:.78rem;color:{clr};font-weight:600">{row['pct']}%</p>
+                    </div>""", unsafe_allow_html=True)
 
-        section("🏆 หมวดหมู่ที่ทำรายได้สูงสุด", "สัดส่วนเทียบกับรายรับรวม")
-        top5 = cat_agg.head(5)
-        cols = st.columns(min(5, len(top5)))
-        for i, (_, row) in enumerate(top5.iterrows()):
-            with cols[i]:
-                clr = color_for(row["category"])
-                st.markdown(f"""
-                <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid {clr};
-                            border-radius:10px;padding:14px 16px;text-align:center;
-                            box-shadow:0 1px 3px rgba(0,0,0,0.05)">
-                  <p style="margin:0;font-size:.72rem;color:#64748B;font-weight:600">{row['category']}</p>
-                  <p style="margin:6px 0 2px;font-size:1.2rem;font-weight:700;color:#0F172A">{fmt_thb(row['amount'])}</p>
-                  <p style="margin:0;font-size:.78rem;color:{clr};font-weight:600">{row['pct']}%</p>
-                </div>""", unsafe_allow_html=True)
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        st.divider()
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # Top 10 best & bottom 10 worst items
     if not itms.empty:
         item_agg = itms.groupby("item_name")["total"].sum().reset_index()
 
         c_best, c_worst = st.columns(2)
+        item_total = item_agg["total"].sum()
         with c_best:
-            section("📈 Top 10 สินค้าขายดีที่สุด", "")
-            top10 = item_agg.sort_values("total", ascending=True).tail(10)
-            vals = top10["total"].tolist()
-            mx = max(vals) if vals else 1
-            clrs = [f"rgba(16,185,129,{0.4 + 0.6*(v/mx):.2f})" for v in vals]
-            hbar(top10, "total", "item_name", colors=clrs)
+            with st.container(border=True):
+                st.markdown("#### 📈 Top 10 สินค้าขายดีที่สุด")
+                top10 = item_agg.sort_values("total", ascending=True).tail(10)
+                vals = top10["total"].tolist()
+                mx = max(vals) if vals else 1
+                clrs = [f"rgba(16,185,129,{0.4 + 0.6*(v/mx):.2f})" for v in vals]
+                hbar(top10, "total", "item_name", colors=clrs,
+                     total=item_total, key="pnl_top10")
 
         with c_worst:
-            section("📉 Bottom 10 สินค้าขายน้อยที่สุด", "สินค้าที่มียอดต่ำที่สุดในช่วงนี้")
-            bot10 = item_agg[item_agg["total"] > 0].sort_values("total", ascending=True).head(10)
-            vals2 = bot10["total"].tolist()
-            mx2 = max(vals2) if vals2 else 1
-            clrs2 = [f"rgba(239,68,68,{0.35 + 0.65*(v/mx2):.2f})" for v in vals2]
-            hbar(bot10, "total", "item_name", colors=clrs2)
+            with st.container(border=True):
+                st.markdown("#### 📉 Bottom 10 สินค้าขายน้อยที่สุด")
+                st.caption("สินค้าที่มียอดต่ำที่สุดในช่วงนี้")
+                bot10 = item_agg[item_agg["total"] > 0].sort_values("total", ascending=True).head(10)
+                vals2 = bot10["total"].tolist()
+                mx2 = max(vals2) if vals2 else 1
+                clrs2 = [f"rgba(239,68,68,{0.35 + 0.65*(v/mx2):.2f})" for v in vals2]
+                hbar(bot10, "total", "item_name", colors=clrs2,
+                     total=item_total, key="pnl_bot10")
 
-        st.divider()
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # Payment split donut
+    # Payment split
     cash_v     = fp["cash_revenue"].sum()
     transfer_v = fp["transfer_revenue"].sum()
     if cash_v + transfer_v > 0:
-        c_pay1, c_pay2 = st.columns([4,6])
-        with c_pay1:
-            donut(["เงินสด","โอนเงิน"], [cash_v, transfer_v],
-                  title="💳 สัดส่วนการชำระเงิน",
-                  colors=["#10B981","#3B82F6"])
-        with c_pay2:
-            section("💳 ยอดแยกวิธีชำระเงิน","")
-            fig_pay = go.Figure()
-            fig_pay.add_trace(go.Bar(
-                x=["เงินสด","โอนเงิน"], y=[cash_v, transfer_v],
-                marker=dict(color=["#10B981","#3B82F6"], line_width=0),
-                text=[fmt_thb(cash_v), fmt_thb(transfer_v)],
-                textposition="outside", textfont=dict(size=13),
-                hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
-                width=[0.4, 0.4],
-            ))
-            fig_pay.update_layout(**ch(height=280, showlegend=False,
-                                        xaxis=dict(tickfont=dict(size=13)),
-                                        margin=dict(t=24,b=24,l=16,r=16)))
-            st.plotly_chart(fig_pay, use_container_width=True)
+        with st.container(border=True):
+            st.markdown("#### 💳 สัดส่วนการชำระเงิน")
+            c_pay1, c_pay2 = st.columns([4,6])
+            with c_pay1:
+                donut(["เงินสด","โอนเงิน"], [cash_v, transfer_v],
+                      colors=["#10B981","#3B82F6"])
+            with c_pay2:
+                fig_pay = go.Figure()
+                fig_pay.add_trace(go.Bar(
+                    x=["เงินสด","โอนเงิน"], y=[cash_v, transfer_v],
+                    marker=dict(color=["#10B981","#3B82F6"], line_width=0),
+                    text=[fmt_thb(cash_v), fmt_thb(transfer_v)],
+                    textposition="outside", textfont=dict(size=13),
+                    hovertemplate="<b>%{x}</b><br>฿%{y:,.0f}<extra></extra>",
+                    width=[0.4, 0.4],
+                ))
+                fig_pay.update_layout(**ch(height=280, showlegend=False,
+                                            xaxis=dict(tickfont=dict(size=13)),
+                                            margin=dict(t=24,b=24,l=16,r=16)))
+                st.plotly_chart(fig_pay, use_container_width=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -735,66 +835,71 @@ elif page == "🐾 เคสผู้ป่วย":
     # Charts
     c1, c2 = st.columns(2)
     with c1:
-        section("🐶 สัดส่วนตามประเภทสัตว์")
-        pt_agg = cases.groupby("pet_type")["id"].count().reset_index()
-        pt_agg.columns = ["ประเภท","จำนวน"]
-        pt_agg = pt_agg.sort_values("จำนวน", ascending=False)
-        labels_pt = [f"{PET_EMOJI.get(t,'🐾')} {t}" for t in pt_agg["ประเภท"]]
-        donut(labels_pt, pt_agg["จำนวน"].tolist(),
-              colors=PALETTE[:len(pt_agg)], center_text=f"{len(cases)} เคส")
+        with st.container(border=True):
+            st.markdown("#### 🐶 สัดส่วนตามประเภทสัตว์")
+            pt_agg = cases.groupby("pet_type")["id"].count().reset_index()
+            pt_agg.columns = ["ประเภท","จำนวน"]
+            pt_agg = pt_agg.sort_values("จำนวน", ascending=False)
+            labels_pt = [f"{PET_EMOJI.get(t,'🐾')} {t}" for t in pt_agg["ประเภท"]]
+            donut(labels_pt, pt_agg["จำนวน"].tolist(),
+                  colors=PALETTE[:len(pt_agg)], center_text=f"{len(cases)} เคส")
 
     with c2:
-        section("🏥 บริการที่ใช้บ่อยที่สุด (Top 10)")
-        svc_agg = cases.groupby("item_name")["id"].count().reset_index()
-        svc_agg.columns = ["บริการ","จำนวนครั้ง"]
-        svc_agg = svc_agg.sort_values("จำนวนครั้ง", ascending=True).tail(10)
-        clrs_svc = [PALETTE[i % len(PALETTE)] for i in range(len(svc_agg))]
-        fig_svc = go.Figure(go.Bar(
-            x=svc_agg["จำนวนครั้ง"], y=svc_agg["บริการ"], orientation="h",
-            marker=dict(color=clrs_svc, line_width=0),
-            text=svc_agg["จำนวนครั้ง"], textposition="outside",
-            hovertemplate="<b>%{y}</b><br>%{x} ครั้ง<extra></extra>",
-        ))
-        fig_svc.update_layout(**ch(height=320, showlegend=False,
-                                    yaxis=dict(showgrid=False, tickfont=dict(size=10)),
-                                    margin=dict(t=8,b=8,l=8,r=60)))
-        st.plotly_chart(fig_svc, use_container_width=True)
+        with st.container(border=True):
+            st.markdown("#### 🏥 บริการที่ใช้บ่อยที่สุด (Top 10)")
+            svc_agg = cases.groupby("item_name")["id"].count().reset_index()
+            svc_agg.columns = ["บริการ","จำนวนครั้ง"]
+            svc_agg = svc_agg.sort_values("จำนวนครั้ง", ascending=True).tail(10)
+            clrs_svc = [PALETTE[i % len(PALETTE)] for i in range(len(svc_agg))]
+            fig_svc = go.Figure(go.Bar(
+                x=svc_agg["จำนวนครั้ง"], y=svc_agg["บริการ"], orientation="h",
+                marker=dict(color=clrs_svc, line_width=0),
+                text=svc_agg["จำนวนครั้ง"], textposition="outside",
+                hovertemplate="<b>%{y}</b><br>%{x} ครั้ง<extra></extra>",
+            ))
+            fig_svc.update_layout(**ch(height=320, showlegend=False,
+                                        yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                                        margin=dict(t=8,b=8,l=8,r=60)))
+            st.plotly_chart(fig_svc, use_container_width=True)
 
-    st.divider()
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # Top clients
-    section("👑 Top 10 ลูกค้าที่ใช้บริการสูงสุด","ยอดสุทธิสะสม")
-    top_cli = cases.groupby("client_name")["net_amount"].sum().reset_index()
-    top_cli = top_cli.sort_values("net_amount", ascending=True).tail(10)
-    vals_cli = top_cli["net_amount"].tolist()
-    mx_cli = max(vals_cli) if vals_cli else 1
-    clrs_cli = [f"rgba(124,58,237,{0.35+0.65*(v/mx_cli):.2f})" for v in vals_cli]
-    hbar(top_cli, "net_amount", "client_name", colors=clrs_cli)
+    with st.container(border=True):
+        st.markdown("#### 👑 Top 10 ลูกค้าที่ใช้บริการสูงสุด")
+        st.caption("ยอดสุทธิสะสม")
+        top_cli = cases.groupby("client_name")["net_amount"].sum().reset_index()
+        top_cli = top_cli.sort_values("net_amount", ascending=True).tail(10)
+        vals_cli = top_cli["net_amount"].tolist()
+        mx_cli = max(vals_cli) if vals_cli else 1
+        clrs_cli = [f"rgba(124,58,237,{0.35+0.65*(v/mx_cli):.2f})" for v in vals_cli]
+        hbar(top_cli, "net_amount", "client_name", colors=clrs_cli)
 
-    st.divider()
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # Search & filter
-    section("🔍 ค้นหาและกรองเคส")
-    s1, s2, s3 = st.columns(3)
-    search_owner = s1.text_input("ชื่อเจ้าของ")
-    search_pet   = s2.text_input("ชื่อสัตว์")
-    pet_types_all = sorted(cases["pet_type"].dropna().unique().tolist())
-    pet_type_flt  = s3.multiselect("ประเภทสัตว์", pet_types_all)
+    with st.container(border=True):
+        st.markdown("#### 🔍 ค้นหาและกรองเคส")
+        s1, s2, s3 = st.columns(3)
+        search_owner = s1.text_input("ชื่อเจ้าของ")
+        search_pet   = s2.text_input("ชื่อสัตว์")
+        pet_types_all = sorted(cases["pet_type"].dropna().unique().tolist())
+        pet_type_flt  = s3.multiselect("ประเภทสัตว์", pet_types_all)
 
-    disp = cases.copy()
-    if search_owner: disp = disp[disp["client_name"].str.contains(search_owner, case=False, na=False)]
-    if search_pet:   disp = disp[disp["pet_name"].str.contains(search_pet, case=False, na=False)]
-    if pet_type_flt: disp = disp[disp["pet_type"].isin(pet_type_flt)]
+        disp = cases.copy()
+        if search_owner: disp = disp[disp["client_name"].str.contains(search_owner, case=False, na=False)]
+        if search_pet:   disp = disp[disp["pet_name"].str.contains(search_pet, case=False, na=False)]
+        if pet_type_flt: disp = disp[disp["pet_type"].isin(pet_type_flt)]
 
-    disp["ประเภทสัตว์"] = disp["pet_type"].map(lambda t: f"{PET_EMOJI.get(t,'🐾')} {t}")
-    show_cols = {
-        "tx_date":"วันที่","receipt_no":"เลขใบเสร็จ","client_name":"ชื่อเจ้าของ",
-        "pet_name":"ชื่อสัตว์","ประเภทสัตว์":"ประเภทสัตว์","category":"หมวดหมู่",
-        "item_name":"บริการ/สินค้า","qty":"จำนวน","net_amount":"ยอดสุทธิ (฿)","payment_method":"วิธีชำระ",
-    }
-    disp_show = disp.rename(columns=show_cols)[[v for v in show_cols.values() if v in disp.rename(columns=show_cols).columns]]
-    st.dataframe(disp_show, use_container_width=True, height=400, hide_index=True)
-    st.caption(f"แสดง {len(disp_show):,} เคส  •  ยอดรวม {fmt_thb(disp['net_amount'].sum())}")
+        disp["ประเภทสัตว์"] = disp["pet_type"].map(lambda t: f"{PET_EMOJI.get(t,'🐾')} {t}")
+        show_cols = {
+            "tx_date":"วันที่","receipt_no":"เลขใบเสร็จ","client_name":"ชื่อเจ้าของ",
+            "pet_name":"ชื่อสัตว์","ประเภทสัตว์":"ประเภทสัตว์","category":"หมวดหมู่",
+            "item_name":"บริการ/สินค้า","qty":"จำนวน","net_amount":"ยอดสุทธิ (฿)","payment_method":"วิธีชำระ",
+        }
+        disp_show = disp.rename(columns=show_cols)[[v for v in show_cols.values() if v in disp.rename(columns=show_cols).columns]]
+        st.dataframe(disp_show, use_container_width=True, height=400, hide_index=True)
+        st.caption(f"แสดง {len(disp_show):,} เคส  •  ยอดรวม {fmt_thb(disp['net_amount'].sum())}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -832,13 +937,15 @@ elif page == "💊 คลังยา & สินค้า":
             if search_s: df_f = df_f[df_f["stock_name"].str.contains(search_s, case=False, na=False)]
 
             # Top 20 by value chart
-            section("💎 Top 20 สินค้าตามมูลค่าคลัง")
-            df_f["inv_value"] = df_f["qty"] * df_f["sell_price"].fillna(0)
-            top20 = df_f.nlargest(20, "inv_value")[["stock_name","inv_value"]].sort_values("inv_value")
-            vals_s = top20["inv_value"].tolist()
-            mx_s = max(vals_s) if vals_s else 1
-            clrs_s = [f"rgba(59,130,246,{0.35+0.65*(v/mx_s):.2f})" for v in vals_s]
-            hbar(top20, "inv_value", "stock_name", colors=clrs_s)
+            with st.container(border=True):
+                st.markdown("#### 💎 Top 20 สินค้าตามมูลค่าคลัง")
+                df_f["inv_value"] = df_f["qty"] * df_f["sell_price"].fillna(0)
+                top20 = df_f.nlargest(20, "inv_value")[["stock_name","inv_value"]].sort_values("inv_value")
+                vals_s = top20["inv_value"].tolist()
+                mx_s = max(vals_s) if vals_s else 1
+                clrs_s = [f"rgba(59,130,246,{0.35+0.65*(v/mx_s):.2f})" for v in vals_s]
+                hbar(top20, "inv_value", "stock_name", colors=clrs_s,
+                     total=df_f["inv_value"].sum(), key="stock_top20")
 
             # Table
             st.divider()
@@ -868,28 +975,30 @@ elif page == "💊 คลังยา & สินค้า":
 
             c1,c2 = st.columns([6,4])
             with c1:
-                section("📅 มูลค่าการรับสินค้าตามเดือน")
-                df_inc2 = df_inc.copy()
-                df_inc2["month"] = df_inc2["receive_date"].str[:7]
-                monthly = df_inc2.groupby("month")["total_amount"].sum().reset_index()
-                monthly = monthly.sort_values("month")
-                fig_m = go.Figure(go.Bar(
-                    x=monthly["month"], y=monthly["total_amount"],
-                    marker=dict(color="#EF4444", line_width=0, opacity=0.85),
-                    text=monthly["total_amount"].map(fmt_thb),
-                    textposition="outside", textfont=dict(size=10),
-                ))
-                fig_m.update_layout(**ch(height=280, showlegend=False,
-                                          margin=dict(t=24,b=24,l=16,r=16)))
-                st.plotly_chart(fig_m, use_container_width=True)
+                with st.container(border=True):
+                    st.markdown("#### 📅 มูลค่าการรับสินค้าตามเดือน")
+                    df_inc2 = df_inc.copy()
+                    df_inc2["month"] = df_inc2["receive_date"].str[:7]
+                    monthly = df_inc2.groupby("month")["total_amount"].sum().reset_index()
+                    monthly = monthly.sort_values("month")
+                    fig_m = go.Figure(go.Bar(
+                        x=monthly["month"], y=monthly["total_amount"],
+                        marker=dict(color="#EF4444", line_width=0, opacity=0.85),
+                        text=monthly["total_amount"].map(fmt_thb),
+                        textposition="outside", textfont=dict(size=10),
+                    ))
+                    fig_m.update_layout(**ch(height=280, showlegend=False,
+                                              margin=dict(t=24,b=24,l=16,r=16)))
+                    st.plotly_chart(fig_m, use_container_width=True)
 
             with c2:
-                section("🏭 แยกตาม Supplier")
-                sup_agg = df_inc.groupby("supplier")["total_amount"].sum().reset_index()
-                sup_agg = sup_agg[sup_agg["supplier"].str.strip() != ""].sort_values("total_amount", ascending=False)
-                if not sup_agg.empty:
-                    donut(sup_agg["supplier"].tolist(), sup_agg["total_amount"].tolist(),
-                          colors=PALETTE[:len(sup_agg)])
+                with st.container(border=True):
+                    st.markdown("#### 🏭 แยกตาม Supplier")
+                    sup_agg = df_inc.groupby("supplier")["total_amount"].sum().reset_index()
+                    sup_agg = sup_agg[sup_agg["supplier"].str.strip() != ""].sort_values("total_amount", ascending=False)
+                    if not sup_agg.empty:
+                        donut(sup_agg["supplier"].tolist(), sup_agg["total_amount"].tolist(),
+                              colors=PALETTE[:len(sup_agg)])
 
             st.divider()
             show_inc = df_inc[["receive_date","po_number","stock_name","supplier",
