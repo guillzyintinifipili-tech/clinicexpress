@@ -3,11 +3,12 @@ import os
 import pandas as pd
 from datetime import date
 
-DB_PATH     = os.path.join(os.path.dirname(__file__), "vetclinic.db")
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+DB_PATH     = os.path.abspath(os.path.join(os.path.dirname(__file__), "vetclinic.db"))
+UPLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads"))
 
 
 def get_connection():
+    # print(f"DEBUG: SQLite connect to {DB_PATH}")
     return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 
@@ -15,6 +16,10 @@ def init_db():
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     con = get_connection()
     cur = con.cursor()
+    
+    # Debug info
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    # print(f"DEBUG: Pre-init tables: {[r[0] for r in cur.fetchall()]}")
 
     # ── Stock Items ─────────────────────────────────────────────────────────
     cur.execute("""
@@ -119,6 +124,18 @@ def init_db():
             discount REAL DEFAULT 0,
             net_amount REAL DEFAULT 0,
             payment_method TEXT
+        )
+    """)
+
+    # ── Operating Expenses (OPEX) ────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS operating_expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            expense_date TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount REAL DEFAULT 0,
+            description TEXT,
+            created_at TEXT
         )
     """)
 
@@ -403,3 +420,35 @@ def _to_float(v):
         return float(v)
     except (TypeError, ValueError):
         return 0.0
+
+# ── Operating Expenses ────────────────────────────────────────────────────────
+def insert_expense(expense_date: str, category: str, amount: float, description: str):
+    now = date.today().isoformat()
+    con = get_connection()
+    con.execute(
+        "INSERT INTO operating_expenses (expense_date, category, amount, description, created_at) VALUES (?, ?, ?, ?, ?)",
+        (expense_date, category, amount, description, now)
+    )
+    con.commit()
+    con.close()
+
+def fetch_expenses(start: str = None, end: str = None) -> pd.DataFrame:
+    con = get_connection()
+    try:
+        df = pd.read_sql_query("SELECT * FROM operating_expenses ORDER BY expense_date DESC", con)
+    except Exception:
+        con.close()
+        init_db() # Try to create the table
+        con = get_connection()
+        df = pd.read_sql_query("SELECT * FROM operating_expenses ORDER BY expense_date DESC", con)
+    con.close()
+    if not df.empty:
+        if start: df = df[df["expense_date"] >= start]
+        if end:   df = df[df["expense_date"] <= end]
+    return df
+
+def delete_expense(expense_id: int):
+    con = get_connection()
+    con.execute("DELETE FROM operating_expenses WHERE id=?", (expense_id,))
+    con.commit()
+    con.close()
