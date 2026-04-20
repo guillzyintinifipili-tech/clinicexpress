@@ -21,10 +21,10 @@ st.set_page_config(page_title="เอสพี รักษาสัตว์", 
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-.stApp { background: #FFFFFF; }
-.main .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+.stApp { background: #FFFFFF !important; }
+.main .block-container { padding-top: 1.5rem; padding-bottom: 2rem; background: #FFFFFF !important; }
 
 [data-testid="stSidebar"] {
     background: #FFFFFF;
@@ -62,12 +62,10 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 [data-testid="stVerticalBlockBorderWrapper"] {
     background: #FFFFFF !important;
     border-radius: 12px !important;
-    border: 1px solid #E2E8F0 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    border: 1px solid #F1F5F9 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
     padding: 1.25rem !important;
     margin-bottom: 1rem !important;
-    --background-color: #FFFFFF;
-    --secondary-background-color: #FFFFFF;
 }
 /* Force white background for all nested elements inside containers */
 [data-testid="stVerticalBlockBorderWrapper"] div,
@@ -81,8 +79,8 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     background: #FFFFFF !important;
 }
 [data-testid="stVerticalBlockBorderWrapper"] h4 {
-    color: #1E293B !important; font-size: 1.05rem !important; font-weight: 700 !important; 
-    margin-bottom: 1rem !important; background: #FFFFFF !important;
+    color: #0F172A !important; font-size: 1.15rem !important; font-weight: 800 !important; 
+    margin-bottom: 1.5rem !important; background: #FFFFFF !important;
     letter-spacing: -0.02em;
 }
 /* Fix dataframe styling */
@@ -109,11 +107,31 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     background:#F5F3FF; border:1px solid #DDD6FE; border-radius:20px;
     padding:6px 16px; color:#7C3AED; font-size:0.82rem; font-weight:600; margin-bottom:16px;
 }
-.stat-card {
-    background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 12px;
-    padding: 1.25rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+/* ── Clickable KPI Card Styles ── */
+.kpi-wrapper {
+    position: relative;
+    width: 100%;
 }
+.kpi-card {
+    background: #FFFFFF;
+    border: 1px solid #F1F5F9;
+    border-top: 4px solid var(--accent);
+    border-radius: 16px;
+    padding: 22px;
+    min-height: 110px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+.kpi-wrapper:hover .kpi-card {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+
 </style>
+
 """, unsafe_allow_html=True)
 
 init_db()
@@ -337,21 +355,43 @@ _auto_import_pdf_once()
 
 
 # ─── UI helpers ───────────────────────────────────────────────────────────────
-def kpi(col, label, value, note=None, accent="#7C3AED", delta=None, delta_up=True):
+def kpi(col, label, value, note=None, accent="#7C3AED", delta=None, delta_up=True, click_key=None):
     dhtml = ""
     if delta:
         clr = "#16A34A" if delta_up else "#DC2626"
         arr = "▲" if delta_up else "▼"
         dhtml = f'<p style="margin:4px 0 0;color:{clr};font-size:.75rem;font-weight:600">{arr} {delta}</p>'
     nhtml = f'<p style="margin:4px 0 0;color:#94A3B8;font-size:.72rem;line-height:1.2">{note}</p>' if note else ""
-    col.markdown(f"""
-    <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-top:4px solid {accent};
-                border-radius:16px; padding:20px 22px; min-height:110px;
-                box-shadow:0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: center;">
-      <p style="margin:0; color:#64748B; font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;">{label}</p>
-      <p style="margin:8px 0 0; color:#0F172A; font-size:1.65rem; font-weight:800; line-height:1;">{value}</p>
-      {dhtml}{nhtml}
-    </div>""", unsafe_allow_html=True)
+    col.markdown(
+        f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-top:4px solid {accent};border-radius:16px;padding:20px 22px 16px;min-height:108px;box-shadow:0 2px 6px rgba(0,0,0,0.04)">'
+        f'<p style="margin:0;color:#64748B;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase">{label}</p>'
+        f'<p style="margin:6px 0 0;color:#0F172A;font-size:1.6rem;font-weight:800;line-height:1.1">{value}</p>'
+        f'{dhtml}{nhtml}</div>',
+        unsafe_allow_html=True
+    )
+    return False
+
+@st.dialog("📋 รายละเอียดข้อมูล")
+def show_drilldown_modal(title, df, columns=None, download_name="data.csv"):
+    st.markdown(f"#### {title}")
+    if df.empty:
+        st.info("ไม่พบข้อมูลที่เกี่ยวข้อง")
+    else:
+        if columns:
+            disp_df = df[columns].copy()
+        else:
+            disp_df = df.copy()
+        
+        st.dataframe(disp_df, use_container_width=True, hide_index=True)
+        
+        csv = disp_df.to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 ดาวน์โหลดข้อมูล (CSV)",
+            data=csv,
+            file_name=download_name,
+            mime='text/csv',
+            key=f"dl_{hash(title)}"
+        )
 
 def section(title, caption=""):
     st.markdown(f"## {title}")
@@ -571,15 +611,24 @@ if page == "📊 แดชบอร์ดภาพรวม":
 
         # ── KPI Row ───────────────────────────────────────────────────────────
         k1,k2,k3,k4,k5,k6 = st.columns(6)
-        kpi(k1, "รายรับรวม", fmt_thb(total_rev), accent="#7C3AED")
+        
+        if kpi(k1, "รายรับรวม", fmt_thb(total_rev), accent="#7C3AED", click_key="rev_all"):
+            show_drilldown_modal("💰 รายละเอียดรายรับตามหมวดหมู่", load_cats(fs, fe), columns=["category", "amount"])
+            
         kpi(k2, "กำไรขั้นต้น", fmt_thb(gross_p), accent="#10B981")
-        kpi(k3, "กำไรสุทธิ (Net)", fmt_thb(net_profit), accent="#059669")
+        
+        if kpi(k3, "กำไรสุทธิ (Net)", fmt_thb(net_profit), accent="#059669", click_key="net_all"):
+            show_drilldown_modal("💸 รายละเอียดค่าใช้จ่าย (OPEX)", load_expenses(fs, fe), columns=["expense_date", "category", "amount", "description"])
+
         kpi(k4, "อัตรากำไร", f"{margin_pct:.1f}%", note="เป้าหมาย ≥ 50%", accent="#F59E0B")
-        kpi(k5, "ใบเสร็จทั้งหมด", f"{receipts:,} ใบ",
-            note=f"ยกเลิก {cancelled:,} ใบ", accent="#3B82F6")
+        
+        if kpi(k5, "ใบเสร็จทั้งหมด", f"{receipts:,} ใบ", note=f"ยกเลิก {cancelled:,} ใบ", accent="#3B82F6", click_key="rec_all"):
+            show_drilldown_modal("📄 รายละเอียดรอบรายงานการเงิน", load_fp(fs, fe), columns=["period_label", "period_start", "total_revenue", "receipts_count"])
+
         if not stk.empty:
             inv_val_kpi = (stk["qty"] * stk["avg_cost"].fillna(0)).sum()
-            kpi(k6, "มูลค่าคลังสินค้า", fmt_thb(inv_val_kpi), accent="#84CC16")
+            if kpi(k6, "มูลค่าคลังสินค้า", fmt_thb(inv_val_kpi), accent="#84CC16", click_key="stk_all"):
+                show_drilldown_modal("📦 รายการสินค้าที่มีมูลค่าสูงสุด", stk.nlargest(20, 'qty'), columns=["stock_name", "qty", "unit", "avg_cost"])
         else:
             kpi(k6, "ต้นทุนรวม", fmt_thb(total_cost), accent="#EF4444")
 
@@ -963,19 +1012,16 @@ elif page == "🐾 เคสผู้ป่วย":
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PAGE 5 — STOCK (UPGRADED)
+# PAGE 5 — STOCK (UPGRADED WITH DIALOGS)
 # ═══════════════════════════════════════════════════════════════════════════════
 elif page == "💊 สต๊อกสินค้าและยา":
     st.title("💊 สต๊อกสินค้าและบริหารจัดการคลัง")
-
-    # Session state for stock drilldown
-    if "stock_drill" not in st.session_state: st.session_state["stock_drill"] = None
 
     df_si = load_stock_items()
     if df_si.empty:
         st.info("ยังไม่มีข้อมูล — กรุณานำเข้า XLS รายการสินค้าก่อน")
     else:
-        # KPIs
+        # Data calculations
         inv_val = (df_si["qty"] * df_si["avg_cost"].fillna(0)).sum()
         low_stock_df = df_si[(df_si["qty"] <= df_si["alert_qty"]) & (df_si["qty"] > 0)]
         out_stock_df = df_si[df_si["qty"] <= 0]
@@ -983,112 +1029,98 @@ elif page == "💊 สต๊อกสินค้าและยา":
         low_n = len(low_stock_df)
         out_n = len(out_stock_df)
 
+        # Standard KPI Cards
         k1,k2,k3,k4 = st.columns(4)
-        kpi(k1,"มูลค่าคลังรวม", fmt_thb(inv_val), accent="#7C3AED")
-        kpi(k2,"รายการทั้งหมด", f"{len(df_si):,} รายการ", accent="#3B82F6")
+        kpi(k1, "มูลค่าคลังรวม", fmt_thb(inv_val), accent="#7C3AED")
+        kpi(k2, "รายการทั้งหมด", f"{len(df_si):,} รายการ", accent="#3B82F6")
         
-        # Clickable KPI via buttons inside cards (Simulated Drilldown)
-        with k3:
-            if st.button(f"⚠️ ใกล้หมด: {low_n}", use_container_width=True):
-                st.session_state["stock_drill"] = "LOW"
-        with k4:
-            if st.button(f"🚨 หมดสต๊อก: {out_n}", use_container_width=True):
-                st.session_state["stock_drill"] = "OUT"
+        # Interactive KPI Cards using the click_key mechanism
+        if kpi(k3, "ใกล้หมดสต๊อก", f"{low_n} รายการ", accent="#F59E0B", click_key="kpi_low"):
+            cols_to_show = ["stock_id", "stock_name", "qty", "unit", "alert_qty", "supplier"]
+            proc_df = low_stock_df.copy()
+            proc_df["ควรสั่งเพิ่ม"] = (proc_df["alert_qty"] * 2 - proc_df["qty"]).clip(lower=1)
+            show_drilldown_modal("⚠️ รายการสินค้าใกล้หมด", proc_df, 
+                                columns=cols_to_show + ["ควรสั่งเพิ่ม"], 
+                                download_name=f"low_stock_{date.today()}.csv")
+            
+        if kpi(k4, "หมดสต๊อก", f"{out_n} รายการ", accent="#EF4444", click_key="kpi_out"):
+            cols_to_show = ["stock_id", "stock_name", "qty", "unit", "alert_qty", "supplier"]
+            proc_df = out_stock_df.copy()
+            proc_df["ควรสั่งเพิ่ม"] = proc_df["alert_qty"].clip(lower=1)
+            show_drilldown_modal("🚨 รายการสินค้าที่หมดแล้ว", proc_df, 
+                                columns=cols_to_show + ["ควรสั่งเพิ่ม"], 
+                                download_name=f"out_of_stock_{date.today()}.csv")
         
         st.divider()
 
-        # ── Drilldown View ──
-        if st.session_state["stock_drill"]:
-            drill_type = st.session_state["stock_drill"]
-            target_df = low_stock_df if drill_type == "LOW" else out_stock_df
-            title_text = "⚠️ รายการสินค้าใกล้หมด" if drill_type == "LOW" else "🚨 รายการสินค้าที่หมดแล้ว"
-            
-            with st.container(border=True):
-                st.markdown(f"### {title_text}")
-                if not target_df.empty:
-                    # Procurement helper
-                    procure_df = target_df[["stock_id", "stock_name", "qty", "unit", "alert_qty", "supplier"]].copy()
-                    procure_df["จำนวนที่ควรสั่ง"] = procure_df["alert_qty"] * 2 - procure_df["qty"] # Simple logic
-                    
-                    st.dataframe(procure_df, use_container_width=True, hide_index=True)
-                    
-                    # Export Button
-                    csv = procure_df.to_csv(index=False).encode('utf-8-sig')
-                    st.download_button(
-                        label="📥 Download รายการสั่งซื้อ (CSV)",
-                        data=csv,
-                        file_name=f"procurement_list_{drill_type}_{date.today()}.csv",
-                        mime='text/csv',
-                    )
-                else:
-                    st.success("ไม่มีรายการที่ต้องจัดการในส่วนนี้")
-                
-                if st.button("✕ ปิดหน้านี้"):
-                    st.session_state["stock_drill"] = None
-                    st.rerun()
-            st.divider()
-
         # ── Main Content Tabs ──
-        tab1, tab2, tab3 = st.tabs(["📦 ค้นหาสต๊อก", "📊 เคลื่อนไหวรายเดือน", "⬆️ นำเข้าข้อมูล"])
+        tab1, tab2, tab3 = st.tabs(["🔍 ค้นหาสต๊อก", "📊 เคลื่อนไหว & ขาดสต๊อก", "⬆️ นำเข้าข้อมูล"])
 
         with tab1:
+            st.markdown("#### 📦 ค้นหารายการสินค้าในคลัง")
             drug_types = ["ทั้งหมด"] + sorted(df_si["drug_type"].dropna().unique().tolist())
             fa, fb = st.columns([4, 6])
-            sel_type = fa.selectbox("กรองประเภทยา", drug_types)
-            search_s = fb.text_input("🔍 ค้นหาชื่อสินค้า...")
+            sel_type = fa.selectbox("กรองประเภทสินค้า", drug_types)
+            search_s = fb.text_input("🔍 พิมพ์ชื่อสินค้าเพื่อค้นหา...")
             
             df_f = df_si.copy()
             if sel_type != "ทั้งหมด": df_f = df_f[df_f["drug_type"] == sel_type]
             if search_s: df_f = df_f[df_f["stock_name"].str.contains(search_s, case=False, na=False)]
             
-            st.dataframe(df_f[["stock_id", "stock_name", "qty", "unit", "sell_price", "warehouse"]], 
-                         use_container_width=True, hide_index=True)
+            # Show a more comprehensive table for searching
+            st.dataframe(df_f[["stock_id", "stock_name", "drug_type", "qty", "unit", "sell_price", "warehouse", "supplier"]].rename(
+                columns={"stock_id":"รหัส", "stock_name":"ชื่อสินค้า", "drug_type":"ประเภท", "qty":"จำนวน", "unit":"หน่วย", "sell_price":"ราคาขาย", "warehouse":"คลัง", "supplier":"ผู้ผลิต"}), 
+                use_container_width=True, hide_index=True)
 
         with tab2:
-            st.markdown("#### 📅 สรุปการรับสินค้าเข้าคลังรายเดือน")
+            st.markdown("#### 📊 ความเคลื่อนไหวสต๊อกรายเดือน")
             df_inc = load_stock_incoming()
-            if not df_inc.empty:
-                df_inc["month"] = pd.to_datetime(df_inc["receive_date"]).dt.strftime('%Y-%m')
-                monthly_inc = df_inc.groupby("month")["total_amount"].sum().reset_index()
-                
-                fig_inc = go.Figure(go.Bar(x=monthly_inc["month"], y=monthly_inc["total_amount"], 
-                                           marker_color="#10B981", name="ยอดรับเข้า (฿)"))
-                fig_inc.update_layout(ch(height=300))
-                st.plotly_chart(fig_inc, use_container_width=True)
-                
-                # Monthly shortages (based on what's low right now but could be expanded if history exists)
-                st.markdown("##### 🚨 รายการที่ขาดสต๊อกในเดือนนี้")
-                current_month = date.today().strftime('%Y-%m')
-                shortage_items = df_si[df_si["qty"] <= df_si["alert_qty"]]
-                if not shortage_items.empty:
-                    st.warning(f"ขณะนี้มีสินค้า {len(shortage_items)} รายการที่ต่ำกว่าระดับปลอดภัย")
-                    st.dataframe(shortage_items[["stock_name", "qty", "alert_qty", "unit"]].head(10), 
-                                 use_container_width=True, hide_index=True)
+            
+            col_m1, col_m2 = st.columns([6, 4])
+            
+            with col_m1:
+                if not df_inc.empty:
+                    df_inc["month"] = pd.to_datetime(df_inc["receive_date"]).dt.strftime('%Y-%m')
+                    monthly_inc = df_inc.groupby("month")["total_amount"].sum().reset_index()
+                    fig_inc = go.Figure(go.Bar(x=monthly_inc["month"], y=monthly_inc["total_amount"], 
+                                               marker_color="#10B981", name="ยอดรับเข้า (฿)"))
+                    fig_inc.update_layout(ch(height=350), title="มูลค่าการรับสินค้าเข้าคลังรายเดือน")
+                    st.plotly_chart(fig_inc, use_container_width=True)
                 else:
-                    st.success("สต๊อกเพียงพอสำหรับทุกรายการ")
-            else:
-                no_data("ยังไม่มีประวัติการรับสินค้า")
+                    no_data("ยังไม่มีประวัติการรับสินค้าเข้า")
+
+            with col_m2:
+                st.markdown("#### 🚨 สรุปสถานะสต๊อกขาด")
+                if low_n + out_n > 0:
+                    st.error(f"ตรวจพบสินค้าที่มีปัญหา {low_n + out_n} รายการ")
+                    st.write(f"- ใกล้หมด: {low_n} รายการ")
+                    st.write(f"- หมดสต๊อก: {out_n} รายการ")
+                    st.info("💡 คลิกที่ Card ด้านบนเพื่อดูรายละเอียดและสั่งซื้อ")
+                else:
+                    st.success("✅ สต๊อกสินค้าอยู่ในระดับปกติทุกรายการ")
 
         with tab3:
             col_a, col_b = st.columns(2)
             with col_a:
-                st.markdown("#### 📋 อัปเดตรายการสินค้า")
-                up_items = st.file_uploader("เลือกไฟล์ XLS (รายการทั้งหมด)", type=["xls","xlsx"], key="up_items_new")
-                if up_items and st.button("✅ เริ่มนำเข้า", key="btn_imp_1"):
-                    try:
-                        df_pv = read_xls_bytes(up_items.read())
-                        import_stock_items(df_pv)
-                        st.cache_data.clear(); st.success("นำเข้าสำเร็จ!"); st.rerun()
-                    except Exception as e: st.error(f"Error: {e}")
+                with st.container(border=True):
+                    st.markdown("#### 📋 อัปเดตรายการสินค้า (Master)")
+                    up_items = st.file_uploader("ไฟล์ XLS รายการสินค้าทั้งหมด", type=["xls","xlsx"], key="up_items_v2")
+                    if up_items and st.button("✅ เริ่มนำเข้า", key="btn_imp_v2_1"):
+                        try:
+                            df_pv = read_xls_bytes(up_items.read())
+                            import_stock_items(df_pv)
+                            st.cache_data.clear(); st.success("นำเข้าสำเร็จ!"); st.rerun()
+                        except Exception as e: st.error(f"Error: {e}")
             with col_b:
-                st.markdown("#### 🚚 อัปเดตประวัติรับเข้า")
-                up_inc = st.file_uploader("เลือกไฟล์ XLS (ประวัติรับสินค้า)", type=["xls","xlsx"], key="up_inc_new")
-                if up_inc and st.button("✅ เริ่มนำเข้า", key="btn_imp_2"):
-                    try:
-                        df_pv2 = read_xls_bytes(up_inc.read())
-                        import_stock_incoming(df_pv2)
-                        st.cache_data.clear(); st.success("นำเข้าสำเร็จ!"); st.rerun()
-                    except Exception as e: st.error(f"Error: {e}")
+                with st.container(border=True):
+                    st.markdown("#### 🚚 อัปเดตประวัติรับเข้า (History)")
+                    up_inc = st.file_uploader("ไฟล์ XLS ประวัติรับสินค้า", type=["xls","xlsx"], key="up_inc_v2")
+                    if up_inc and st.button("✅ เริ่มนำเข้า", key="btn_imp_v2_2"):
+                        try:
+                            df_pv2 = read_xls_bytes(up_inc.read())
+                            import_stock_incoming(df_pv2)
+                            st.cache_data.clear(); st.success("นำเข้าสำเร็จ!"); st.rerun()
+                        except Exception as e: st.error(f"Error: {e}")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 5 — IMPORT FILES
